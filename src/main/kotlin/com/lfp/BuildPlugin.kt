@@ -8,7 +8,10 @@ import org.gradle.api.logging.LogLevel
 import org.gradle.api.logging.Logging
 import org.gradle.internal.extensions.core.extra
 import java.io.File
-import java.nio.file.*
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 
@@ -51,10 +54,11 @@ class BuildPlugin : Plugin<Settings> {
         val projectPathSegments = projectDirRelativePath.split(Pattern.quote(File.separator).toRegex())
         if (projectPathSegments.isEmpty()) return false
         val projectNameSegments = projectNameSegments(projectPathSegments)
+        if (projectNameSegments.isEmpty()) return false
         val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":$projectName"
         logger.log(
-            LogLevel.LIFECYCLE, "including project $projectPath [${projectPathSegments.joinToString { "/" }}]"
+            LogLevel.LIFECYCLE, "including project $projectPath [${projectPathSegments.joinToString("/")}]"
         )
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
@@ -75,10 +79,10 @@ class BuildPlugin : Plugin<Settings> {
     private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
         var projectNameSegments = projectPathSegments.flatMap {
             Utils.split(
-                it, lowercase = true, nonAlphaNumeric = true, camelCase = true
+                it, nonAlphaNumeric = true, camelCase = true, lowercase = true
             )
         };
-        if (projectNameSegments[0].matches("^modules?$".toRegex())) {
+        if (projectNameSegments.size > 1 && projectNameSegments[0].matches("^modules?$".toRegex())) {
             projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
         }
         return projectNameSegments

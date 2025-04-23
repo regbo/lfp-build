@@ -4,17 +4,22 @@ repositories {
 }
 
 plugins {
-    java
     `kotlin-dsl`
     `java-gradle-plugin`
     `maven-publish`
 }
 
+val pluginId = providers.provider {
+    listOf("repository_group", "repository_owner", "repository_name").map {
+        providers.gradleProperty(it).getOrElse("")
+    }.filter { it.isNotEmpty() }.joinToString(".")
+}
+val pluginImplementationClassName = providers.gradleProperty("plugin_implementation_class_name")
 
 gradlePlugin {
     plugins {
-        register("BuildPlugin") {
-            id = providers.gradleProperty("group_id").get() + ".lfp-build"
+        register(pluginImplementationClassName.get().substringAfterLast('.')) {
+            id = pluginId.get()
             implementationClass = "com.lfp.BuildPlugin"
         }
     }
