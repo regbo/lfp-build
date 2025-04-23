@@ -59,10 +59,7 @@ class BuildPlugin : Plugin<Settings> {
         val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":$projectName"
         val logMessage = "including project $projectPath [${projectPathSegments.joinToString("/")}]"
-        println("lifecycle")
         Utils.logger.lifecycle(logMessage)
-        println("info")
-        Utils.logger.log(LogLevel.INFO, logMessage)
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
         projectDescriptor.name = projectName
@@ -103,6 +100,11 @@ class BuildPlugin : Plugin<Settings> {
             enforcedPlatform = true
         )
         addDependency(project, "org.apache.commons:commons-lang3", BuildPluginProperties.apache_commons_lang3_version)
+        addDependency(project, "one.util:streamex", BuildPluginProperties.one_util_streamex_version)
+        addDependency(project, "ch.qos.logback:logback-classic", BuildPluginProperties.qos_logback_classic_version)
+        addDependency(project, "org.apache.logging.log4j:log4j-to-slf4j")
+        addDependency(project, "org.slf4j:jul-to-slf4j")
+        addDependency(project, "org.springframework.boot:spring-boot-starter-test", configurationName = "testImplementation")
     }
 
 
@@ -127,11 +129,11 @@ class BuildPlugin : Plugin<Settings> {
     private fun addDependency(
         project: Project,
         module: String,
-        minimumVersion: String,
+        minimumVersion: String? = null,
         configurationName: String = "implementation",
         enforcedPlatform: Boolean = false
     ) {
-        val notation = "$module:$minimumVersion"
+        val notation = minimumVersion?.let { "$module:$it" } ?: module
         val dependencyNotation: Any
         if (enforcedPlatform) {
             dependencyNotation = project.dependencies.enforcedPlatform(notation)
@@ -139,10 +141,12 @@ class BuildPlugin : Plugin<Settings> {
             dependencyNotation = notation
         }
         project.dependencies.add(configurationName, dependencyNotation)
-        project.dependencies.constraints {
-            add(configurationName, notation) {
-                version {
-                    require(minimumVersion)
+        if (minimumVersion != null) {
+            project.dependencies.constraints {
+                add(configurationName, notation) {
+                    version {
+                        require(minimumVersion)
+                    }
                 }
             }
         }

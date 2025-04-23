@@ -1,5 +1,6 @@
 package com.lfp
 
+import groovy.lang.Closure
 import org.apache.commons.lang3.StringUtils
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.Logger
@@ -31,6 +32,12 @@ object Utils {
             segments = segments.map { it.lowercase() }
         }
         return TrimmedList.from(segments);
+    }
+
+    fun <T> closure(delegate: Any? = null, block: () -> T): Closure<T> {
+        return object : Closure<T>(delegate) {
+            override fun call(): T = block()
+        }
     }
 }
 
