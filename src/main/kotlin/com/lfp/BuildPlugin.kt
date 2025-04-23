@@ -15,14 +15,18 @@ class BuildPlugin : Plugin<Settings> {
         val rootDir = settings.rootDir;
         Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir: Path?, attrs: BasicFileAttributes): FileVisitResult {
-                if (dir == null || Files.isHidden(dir) || dir.fileName.toString()
-                        .startsWith(".")
-                ) return FileVisitResult.SKIP_SUBTREE
-                else if (dir != rootDir) {
-                    for (suffix in arrayOf("", ".kts")) {
-                        val buildFile = dir.resolve("build.gradle$suffix")
-                        if (Files.isRegularFile(buildFile) && include(settings, dir)) {
-                            return FileVisitResult.SKIP_SUBTREE
+                if (dir == null || Files.isHidden(dir)) {
+                    return FileVisitResult.SKIP_SUBTREE
+                } else {
+                    val dirFileName = dir.fileName.toString();
+                    if (dirFileName.startsWith(".") || arrayOf("src", "build", "temp", "tmp").contains(dirFileName)) {
+                        return FileVisitResult.SKIP_SUBTREE
+                    } else {
+                        for (suffix in arrayOf("", ".kts")) {
+                            val buildFile = dir.resolve("build.gradle$suffix")
+                            if (Files.isRegularFile(buildFile) && include(settings, dir)) {
+                                return FileVisitResult.SKIP_SUBTREE
+                            }
                         }
                     }
                 }
