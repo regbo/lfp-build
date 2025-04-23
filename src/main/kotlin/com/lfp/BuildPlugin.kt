@@ -92,6 +92,7 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
         Library.fromProps().forEach { library ->
+            Utils.logger.lifecycle("adding library - $library")
             val notation = library.version?.let { "${library.module}:${library.version}" } ?: library.module
             val dependencyNotation: Any
             if (library.enforcedPlatform) {
@@ -155,7 +156,7 @@ private data class Library(
                     configurationName = if (module in testImplementationModules) "testImplementation" else "implementation",
                     alias = alias,
                     module = module,
-                    version = if (version.isNullOrBlank() || "null" == version || parts.size < 3) null else version,
+                    version = if (version.isNullOrBlank() || parts.size < 3) null else version,
                     enforcedPlatform = module in enforcedModules
                 )
             }
