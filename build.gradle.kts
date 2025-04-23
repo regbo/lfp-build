@@ -15,12 +15,13 @@ val pluginId = providers.provider {
     }.filter { it.isNotEmpty() }.joinToString(".")
 }
 val pluginImplementationClassName = providers.gradleProperty("plugin_implementation_class_name")
+val pluginName = pluginImplementationClassName.map { it.substringAfterLast('.') }
 
 gradlePlugin {
     plugins {
-        register(pluginImplementationClassName.get().substringAfterLast('.')) {
+        register(pluginName.get()) {
             id = pluginId.get()
-            implementationClass = "com.lfp.BuildPlugin"
+            implementationClass = pluginImplementationClassName.get()
         }
     }
 }
