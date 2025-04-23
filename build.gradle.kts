@@ -1,5 +1,3 @@
-import java.io.Serializable
-
 repositories {
     gradlePluginPortal()
     mavenCentral()
@@ -15,8 +13,8 @@ plugins {
 
 dependencies {
     implementation(libs.apache.commons.lang3)
-    testImplementation(platform("org.junit:junit-bom:5.10.5"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
 }
 
 val pluginId = providers.provider {
@@ -37,10 +35,6 @@ gradlePlugin {
 }
 
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-var versionCatalogLibraries = versionCatalog.libraryAliases.associateWith { alias ->
-    val dep = versionCatalog.findLibrary(alias).get().get()
-    "${dep.module}:${dep.version ?: ""}"
-}
 
 buildConfig {
     packageName(pluginImplementationClassName.get().substringBeforeLast("."))
@@ -55,9 +49,10 @@ buildConfig {
             }
         }
     }
-    buildConfigField("versionCatalogLibraries", versionCatalogLibraries)
-
-
+    buildConfigField("versionCatalogLibraries", versionCatalog.libraryAliases.associateWith { alias ->
+        val dep = versionCatalog.findLibrary(alias).get().get()
+        "${dep.module}:${dep.version ?: ""}"
+    })
 }
 
 tasks.test {

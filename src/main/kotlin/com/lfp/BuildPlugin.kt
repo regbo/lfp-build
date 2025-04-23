@@ -20,6 +20,13 @@ class BuildPlugin : Plugin<Settings> {
 
 
     override fun apply(settings: Settings) {
+        settings.gradle.beforeProject(object : Action<Project> {
+            override fun execute(project: Project) {
+                if (project.projectDir == settings.rootDir) {
+                    configureProject(project, emptyList(), Utils.split(project.name))
+                }
+            }
+        })
         Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir: Path?, attrs: BasicFileAttributes): FileVisitResult {
                 if (isModuleProjectDir(settings, dir) && include(settings, dir!!)) {
@@ -46,6 +53,7 @@ class BuildPlugin : Plugin<Settings> {
         return false
     }
 
+
     @Suppress("ObjectLiteralToLambda")
     private fun include(settings: Settings, projectDir: Path): Boolean {
         val projectDirFile = projectDir.toFile().canonicalFile
@@ -65,32 +73,26 @@ class BuildPlugin : Plugin<Settings> {
         settings.gradle.beforeProject(object : Action<Project> {
             override fun execute(project: Project) {
                 if (project.projectDir == projectDirFile) {
-                    configureProject(settings, project, projectPathSegments, projectNameSegments)
+                    configureProject(project, projectPathSegments, projectNameSegments)
                 }
             }
         })
         return true
     }
 
-    private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
-        var projectNameSegments = projectPathSegments.flatMap {
-            Utils.split(
-                it, nonAlphaNumeric = true, camelCase = true, lowercase = true
-            )
-        };
-        if (projectNameSegments.size > 1 && projectNameSegments[0].matches("^modules?$".toRegex())) {
-            projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
-        }
-        return projectNameSegments
-    }
-
 
     private fun configureProject(
-        settings: Settings, project: Project, projectPathSegments: List<String>, projectNameSegments: List<String>
+        project: Project,
+        projectPathSegments: List<String>,
+        projectNameSegments: List<String>
     ) {
         project.extra["projectPathSegments"] = projectPathSegments
         project.extra["projectNameSegments"] = projectNameSegments
-        project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
+        val packageDirSegments = packageDirSegments(project, projectNameSegments)
+        project.extra["packageDirSegments"] = packageDirSegments
+        if (project != project.rootProject) {
+            configureProjectSrcDir(project, packageDirSegments)
+        }
         Library.fromProps().forEach { library ->
             project.logger.lifecycle("adding library - $library")
             val notation = library.version?.let { "${library.module}:${library.version}" } ?: library.module
@@ -113,6 +115,35 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
+    private fun configureProjectSrcDir(project: Project, packageDirSegments: List<String>) {
+        val srcMainDir = project.rootDir.resolve("src/main")
+        val sourceFileExists = srcMainDir
+            .takeIf { it.exists() && it.isDirectory }
+            ?.walkTopDown()
+            ?.any { it.isFile && (it.extension == "kt" || it.extension == "java") }
+            ?: false
+        if (sourceFileExists) return
+        val packageDirPath = packageDirSegments.joinToString("/")
+        val srcMainLanguageDir: File = if (project.buildFile.name.endsWith(".kts")) {
+            srcMainDir.resolve("kotlin/$packageDirPath")
+        } else {
+            srcMainDir.resolve("java/$packageDirPath")
+        }
+        srcMainLanguageDir.mkdirs()
+    }
+
+
+    private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
+        var projectNameSegments = projectPathSegments.flatMap {
+            Utils.split(
+                it, nonAlphaNumeric = true, camelCase = true, lowercase = true
+            )
+        };
+        if (projectNameSegments.size > 1 && projectNameSegments[0].matches("^modules?$".toRegex())) {
+            projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
+        }
+        return projectNameSegments
+    }
 
     private fun packageDirSegments(project: Project, projectNameSegments: List<String>): List<String> {
         var groupSegments = Utils.split(project.group.toString(), nonAlphaNumeric = true)
