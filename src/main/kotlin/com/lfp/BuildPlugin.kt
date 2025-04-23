@@ -58,8 +58,9 @@ class BuildPlugin : Plugin<Settings> {
         val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":$projectName"
         val logMessage = "including project $projectPath [${projectPathSegments.joinToString("/")}]"
-        logger.log(LogLevel.LIFECYCLE, logMessage)
+        println("lifecycle")
         Utils.logger(settings).lifecycle(logMessage)
+        println("info")
         Utils.logger(settings).log(LogLevel.INFO, logMessage)
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)

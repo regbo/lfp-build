@@ -8,12 +8,7 @@ import org.gradle.api.logging.Logging
 object Utils {
 
     fun logger(settings: Settings): Logger {
-        val rootProject = settings.gradle.rootProject
-        return try {
-            rootProject.logger
-        } catch (e: Exception) {
-            Logging.getLogger(Settings::class.java)
-        }
+        return settings.gradle.rootProject.logger
     }
 
     fun split(
