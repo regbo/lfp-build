@@ -1,5 +1,6 @@
 package com.lfp
 
+import org.apache.commons.lang3.StringUtils
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
@@ -7,9 +8,10 @@ import org.gradle.api.logging.Logging
 
 object Utils {
 
-    fun logger(settings: Settings): Logger {
-        return settings.gradle.rootProject.logger
+    val logger: Logger by lazy {
+        Logging.getLogger(Settings::class.java)
     }
+
 
     fun split(
         str: String?,
@@ -17,56 +19,19 @@ object Utils {
         camelCase: Boolean = false,
         lowercase: Boolean = false
     ): List<String> {
-        var segments: List<String> = TrimmedList.from(listOf(str))
+        if (str.isNullOrBlank()) return emptyList()
+        var segments: List<String> = listOf(str)
         if (nonAlphaNumeric) {
-            segments = segments.flatMap { splitNonAlphaNumeric(it) }
+            segments = segments.flatMap { it.split("[^a-zA-Z0-9]+".toRegex()) }
         }
         if (camelCase) {
-            segments = segments.flatMap { splitCamelCase(it) }
+            segments = segments.flatMap { StringUtils.splitByCharacterTypeCamelCase(it).toList() }
         }
         if (lowercase) {
             segments = segments.map { it.lowercase() }
         }
-        return segments;
+        return TrimmedList.from(segments);
     }
-
-    fun splitNonAlphaNumeric(str: String?): List<String> {
-        if (str.isNullOrEmpty()) return emptyList()
-        return TrimmedList.from(str.split("[^a-zA-Z0-9]+".toRegex()))
-    }
-
-    fun splitCamelCase(str: String?): List<String> {
-        if (str.isNullOrEmpty()) return emptyList()
-
-        val chars = str.toCharArray()
-        val result = mutableListOf<String>()
-
-        var pos = 1
-        var tokenStart = 0
-        var currentType = Character.getType(chars[0])
-
-        while (pos < chars.size) {
-            val type = Character.getType(chars[pos])
-            if (type != currentType) {
-                if (type.toByte() == Character.LOWERCASE_LETTER && currentType.toByte() == Character.UPPERCASE_LETTER) {
-                    val newTokenStart = pos - 1
-                    if (newTokenStart != tokenStart) {
-                        result.add(String(chars, tokenStart, newTokenStart - tokenStart))
-                        tokenStart = newTokenStart
-                    }
-                } else {
-                    result.add(String(chars, tokenStart, pos - tokenStart))
-                    tokenStart = pos
-                }
-                currentType = type
-            }
-            pos++
-        }
-
-        result.add(String(chars, tokenStart, chars.size - tokenStart))
-        return TrimmedList.from(result)
-    }
-
 }
 
 

@@ -25,55 +25,6 @@ class UtilsTest {
         assertEquals(listOf("sub", "dir", "name", "file", "name"), result)
     }
 
-    @Nested
-    inner class SplitNonAlphaNumeric {
-
-        @Test
-        fun `splits by symbols and spaces`() {
-            val result = Utils.splitNonAlphaNumeric("hello-world_test 123")
-            assertEquals(listOf("hello", "world", "test", "123"), result)
-        }
-
-        @Test
-        fun `trims and removes empty segments`() {
-            val result = Utils.splitNonAlphaNumeric("  one  , , two,, ,three ")
-            assertEquals(listOf("one", "two", "three"), result)
-        }
-
-        @Test
-        fun `returns empty list for null or blank`() {
-            assertEquals(emptyList<String>(), Utils.splitNonAlphaNumeric(null))
-            assertEquals(emptyList<String>(), Utils.splitNonAlphaNumeric("   "))
-        }
-    }
-
-    @Nested
-    inner class SplitCamelCase {
-
-        @Test
-        fun `splits mixed camelCase and acronyms`() {
-            val result = Utils.splitCamelCase("HTTPRequestHandler")
-            assertEquals(listOf("HTTP", "Request", "Handler"), result)
-        }
-
-        @Test
-        fun `splits PascalCase`() {
-            val result = Utils.splitCamelCase("MyXMLParser")
-            assertEquals(listOf("My", "XML", "Parser"), result)
-        }
-
-        @Test
-        fun `splits single word`() {
-            val result = Utils.splitCamelCase("Simple")
-            assertEquals(listOf("Simple"), result)
-        }
-
-        @Test
-        fun `returns empty list for null or blank`() {
-            assertEquals(emptyList<String>(), Utils.splitCamelCase(null))
-            assertEquals(emptyList<String>(), Utils.splitCamelCase("  "))
-        }
-    }
 
     @Nested
     inner class SplitCombined {

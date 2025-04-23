@@ -14,6 +14,7 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
+import kotlin.math.min
 
 class BuildPlugin : Plugin<Settings> {
 
@@ -59,9 +60,9 @@ class BuildPlugin : Plugin<Settings> {
         val projectPath = ":$projectName"
         val logMessage = "including project $projectPath [${projectPathSegments.joinToString("/")}]"
         println("lifecycle")
-        Utils.logger(settings).lifecycle(logMessage)
+        Utils.logger.lifecycle(logMessage)
         println("info")
-        Utils.logger(settings).log(LogLevel.INFO, logMessage)
+        Utils.logger.log(LogLevel.INFO, logMessage)
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
         projectDescriptor.name = projectName
@@ -90,18 +91,18 @@ class BuildPlugin : Plugin<Settings> {
 
 
     private fun configureProject(
-        settings: Settings,
-        project: Project,
-        projectPathSegments: List<String>,
-        projectNameSegments: List<String>
+        settings: Settings, project: Project, projectPathSegments: List<String>, projectNameSegments: List<String>
     ) {
         project.extra["projectPathSegments"] = projectPathSegments
         project.extra["projectNameSegments"] = projectNameSegments
         project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
-        project.dependencies.add(
-            "implementation",
-            project.dependencies.enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${BuildPluginProperties.spring_boot_dependencies_version}")
+        addDependency(
+            project,
+            "org.springframework.boot:spring-boot-dependencies",
+            BuildPluginProperties.spring_boot_dependencies_version,
+            enforcedPlatform = true
         )
+        addDependency(project, "org.apache.commons:commons-lang3", BuildPluginProperties.apache_commons_lang3_version)
     }
 
 
@@ -121,6 +122,30 @@ class BuildPlugin : Plugin<Settings> {
             }
         }
         return packageDirSegments.toList();
+    }
+
+    private fun addDependency(
+        project: Project,
+        module: String,
+        minimumVersion: String,
+        configurationName: String = "implementation",
+        enforcedPlatform: Boolean = false
+    ) {
+        val notation = "$module:$minimumVersion"
+        val dependencyNotation: Any
+        if (enforcedPlatform) {
+            dependencyNotation = project.dependencies.enforcedPlatform(notation)
+        } else {
+            dependencyNotation = notation
+        }
+        project.dependencies.add(configurationName, dependencyNotation)
+        project.dependencies.constraints {
+            add(configurationName, notation) {
+                version {
+                    require(minimumVersion)
+                }
+            }
+        }
     }
 
 }

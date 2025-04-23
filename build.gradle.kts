@@ -12,6 +12,7 @@ plugins {
 
 
 dependencies {
+    implementation("org.apache.commons:commons-lang3:${providers.gradleProperty("apache_commons_lang3_version").get()}")
     testImplementation(platform("org.junit:junit-bom:5.10.5"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
