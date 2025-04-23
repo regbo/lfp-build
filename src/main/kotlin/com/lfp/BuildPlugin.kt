@@ -44,17 +44,20 @@ class BuildPlugin : Plugin<Settings> {
         if (projectNameSegments[0].matches("^modules?$".toRegex())) {
             projectNameSegments.removeAt(0);
         }
+        val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":" + projectPathSegments.subList(0, projectPathSegments.size - 1)
-            .joinToString(":") + ":" + projectNameSegments.joinToString("-")
+            .joinToString(":") + ":" + projectName
         println("including project - projectDir:$projectDir projectPath:$projectPath")
         settings.include(projectPath)
         val projectDirFile = projectDir.toFile()
         val projectDescriptor = settings.findProject(projectPath)!!
+        projectDescriptor.name = projectName
         projectDescriptor.projectDir = projectDirFile
         settings.gradle.beforeProject(object : Action<Project> {
             override fun execute(project: Project) {
                 if (project.projectDir == projectDirFile) {
                     project.extra["projectPathSegments"] = projectPathSegments
+                    project.extra["projectNameSegments"] = projectNameSegments
                 }
             }
         })
