@@ -37,6 +37,7 @@ class BuildPlugin : Plugin<Settings> {
         val projectPathSegments = projectPathSegments(settings, projectDir)
         if (projectPathSegments.isEmpty()) return false
         val projectPath = ":" + projectPathSegments.joinToString(":")
+        println("including project - projectDir:$projectDir projectPath:$projectPath")
         settings.include(projectPath)
         val projectDirFile = projectDir.toFile()
         val projectDescriptor = settings.findProject(projectPath)!!

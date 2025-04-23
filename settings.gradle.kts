@@ -1,1 +1,1 @@
-rootProject.name = "submodule-include-plugin"
+rootProject.name = "lfp-build"
