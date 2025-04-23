@@ -46,8 +46,8 @@ class BuildPlugin : Plugin<Settings> {
             projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
         }
         val projectName = projectNameSegments.joinToString("-")
-        val projectPath = projectPathSegments.subList(0, projectPathSegments.size - 1)
-            .joinToString(":") + ":" + projectName
+        val projectPath = ":" + projectPathSegments.subList(0, projectPathSegments.size - 1)
+            .joinToString("-") + ":" + projectName
         println("including project - projectDir - $projectDir projectPath - $projectPath projectName - $projectName")
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
