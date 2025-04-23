@@ -39,36 +39,53 @@ class BuildPlugin : Plugin<Settings> {
     @Suppress("ObjectLiteralToLambda")
     private fun include(settings: Settings, projectDir: Path): Boolean {
         val projectDirFile = projectDir.toFile()
-        val projectPathSegments = segments(projectDirFile.relativeTo(settings.rootDir).path)
+        val projectPathSegments = projectDirFile.relativeTo(settings.rootDir).path.split(Pattern.quote(File.separator))
         if (projectPathSegments.isEmpty()) return false
-        var projectNameSegments = projectPathSegments.toList();
-        if (projectNameSegments[0].matches("^modules?$".toRegex())) {
-            projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
-        }
+        val projectNameSegments = projectNameSegments(projectPathSegments)
         val projectName = projectNameSegments.joinToString("-")
-        val projectPath = ":" + projectPathSegments.subList(0, projectPathSegments.size - 1)
-            .joinToString("-") + ":" + projectName
-        println("including project - projectDir - $projectDir projectPath - $projectPath projectName - $projectName")
+        val projectPath = ":$projectName"
+        Utils.logger.lifecycle("including project $projectPath [${projectPathSegments.joinToString { "/" }}]")
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
-        projectDescriptor.projectDir = projectDirFile
         projectDescriptor.name = projectName
+        projectDescriptor.projectDir = projectDirFile
         settings.gradle.beforeProject(object : Action<Project> {
             override fun execute(project: Project) {
                 if (project.projectDir == projectDirFile) {
                     project.extra["projectPathSegments"] = projectPathSegments
                     project.extra["projectNameSegments"] = projectNameSegments
-                    val packageDirSegments = segments(project.group.toString()) + projectNameSegments
-                    project.extra["packageDirSegments"] = packageDirSegments
+                    project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
                 }
             }
         })
         return true
     }
 
-    private fun segments(path: String): List<String> {
-        return path.split("[^a-zA-Z0-9]+".toRegex())
-            .flatMap { it.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])".toRegex()) }.filter { it.isNotEmpty() }
-            .toList()
+    private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
+        var projectNameSegments =
+            projectPathSegments.flatMap { Utils.split(it, lowercase = true, nonAlphaNumeric = true, camelCase = true) };
+        if (projectNameSegments[0].matches("^modules?$".toRegex())) {
+            projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
+        }
+        return projectNameSegments
+    }
+
+    private fun packageDirSegments(project: Project, projectNameSegments: List<String>): List<String> {
+        var groupSegments = Utils.split(project.group.toString(), nonAlphaNumeric = true)
+        if (groupSegments.isEmpty() && project != project.rootProject) {
+            groupSegments = Utils.split(project.rootProject.group.toString(), nonAlphaNumeric = true)
+        }
+        val packageDirSegments: List<String>
+        if (groupSegments.isEmpty()) {
+            packageDirSegments = projectNameSegments
+        } else {
+            packageDirSegments = groupSegments.toMutableList()
+            for (i in 0 until projectNameSegments.size) {
+                if (packageDirSegments[i] == groupSegments[groupSegments.size - 1]) continue
+                packageDirSegments.add(projectNameSegments[i])
+            }
+        }
+        return packageDirSegments.toList();
     }
 }
+
