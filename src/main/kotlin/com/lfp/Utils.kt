@@ -8,11 +8,11 @@ import org.gradle.api.logging.Logging
 object Utils {
 
     fun logger(settings: Settings): Logger {
+        val rootProject = settings.gradle.rootProject
         return try {
-            val method = settings.javaClass.getMethod("getLogger")
-            method.invoke(settings) as Logger
-        } catch (e: NoSuchMethodException) {
-            return Logging.getLogger(Settings::class.java)
+            rootProject.logger
+        } catch (e: Exception) {
+            Logging.getLogger(Settings::class.java)
         }
     }
 
