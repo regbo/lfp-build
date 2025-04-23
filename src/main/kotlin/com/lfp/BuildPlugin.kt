@@ -36,7 +36,12 @@ class BuildPlugin : Plugin<Settings> {
     private fun include(settings: Settings, projectDir: Path): Boolean {
         val projectPathSegments = projectPathSegments(settings, projectDir)
         if (projectPathSegments.isEmpty()) return false
-        val projectPath = ":" + projectPathSegments.joinToString(":")
+        val projectNameSegments = projectPathSegments.toMutableList();
+        if (projectNameSegments[0].matches("^modules?$".toRegex())) {
+            projectNameSegments.removeAt(0);
+        }
+        val projectPath = ":" + projectPathSegments.subList(0, projectPathSegments.size - 1)
+            .joinToString(":") + ":" + projectNameSegments.joinToString("-")
         println("including project - projectDir:$projectDir projectPath:$projectPath")
         settings.include(projectPath)
         val projectDirFile = projectDir.toFile()
@@ -53,17 +58,9 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     private fun projectPathSegments(settings: Settings, projectDir: Path): List<String> {
-        val projectPathSegments =
-            projectDir.toFile().relativeTo(settings.rootDir).path
-                .split(Pattern.quote(File.separator))
-                .asSequence()
-                .flatMap { it.split("[^a-zA-Z0-9]+".toRegex()) }
-                .flatMap { it.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])".toRegex()) }
-                .filter { it.isNotEmpty() }
-                .toMutableList()
-        if (projectPathSegments.size > 1 && projectPathSegments[0].matches("^modules?$".toRegex())) {
-            projectPathSegments.removeAt(0)
-        }
-        return projectPathSegments.toList()
+        return projectDir.toFile().relativeTo(settings.rootDir).path.split(Pattern.quote(File.separator)).asSequence()
+            .flatMap { it.split("[^a-zA-Z0-9]+".toRegex()) }
+            .flatMap { it.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])".toRegex()) }.filter { it.isNotEmpty() }
+            .toList()
     }
 }
