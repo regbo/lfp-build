@@ -4,6 +4,8 @@ import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
+import org.gradle.api.logging.LogLevel
+import org.gradle.api.logging.Logging
 import org.gradle.internal.extensions.core.extra
 import java.io.File
 import java.nio.file.*
@@ -11,24 +13,15 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 
 class BuildPlugin : Plugin<Settings> {
+
+    private val logger = Logging.getLogger(javaClass)
+
+
     override fun apply(settings: Settings) {
-        val rootDir = settings.rootDir;
         Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir: Path?, attrs: BasicFileAttributes): FileVisitResult {
-                if (dir == null || Files.isHidden(dir)) {
+                if (isModuleProjectDir(settings, dir) && include(settings, dir!!)) {
                     return FileVisitResult.SKIP_SUBTREE
-                } else {
-                    val dirFileName = dir.fileName.toString();
-                    if (dirFileName.startsWith(".") || arrayOf("src", "build", "temp", "tmp").contains(dirFileName)) {
-                        return FileVisitResult.SKIP_SUBTREE
-                    } else {
-                        for (suffix in arrayOf("", ".kts")) {
-                            val buildFile = dir.resolve("build.gradle$suffix")
-                            if (Files.isRegularFile(buildFile) && include(settings, dir)) {
-                                return FileVisitResult.SKIP_SUBTREE
-                            }
-                        }
-                    }
                 }
                 return super.preVisitDirectory(dir, attrs)
 
@@ -36,15 +29,33 @@ class BuildPlugin : Plugin<Settings> {
         })
     }
 
+    private fun isModuleProjectDir(settings: Settings, dir: Path?): Boolean {
+        if (dir != null && !Files.isHidden(dir) && settings.rootDir != dir) {
+            val dirFileName = dir.fileName.toString();
+            if (!dirFileName.startsWith(".") && !arrayOf("src", "build", "temp", "tmp").contains(dirFileName)) {
+                for (suffix in arrayOf("", ".kts")) {
+                    val buildFile = dir.resolve("build.gradle$suffix")
+                    if (Files.isRegularFile(buildFile)) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
+
     @Suppress("ObjectLiteralToLambda")
     private fun include(settings: Settings, projectDir: Path): Boolean {
-        val projectDirFile = projectDir.toFile()
-        val projectPathSegments = projectDirFile.relativeTo(settings.rootDir).path.split(Pattern.quote(File.separator))
+        val projectDirFile = projectDir.toFile().canonicalFile
+        val projectDirRelativePath = projectDirFile.relativeTo(settings.rootDir.canonicalFile).path
+        val projectPathSegments = projectDirRelativePath.split(Pattern.quote(File.separator).toRegex())
         if (projectPathSegments.isEmpty()) return false
         val projectNameSegments = projectNameSegments(projectPathSegments)
         val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":$projectName"
-        Utils.logger.lifecycle("including project $projectPath [${projectPathSegments.joinToString { "/" }}]")
+        logger.log(
+            LogLevel.LIFECYCLE, "including project $projectPath [${projectPathSegments.joinToString { "/" }}]"
+        )
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
         projectDescriptor.name = projectName
@@ -62,8 +73,11 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
-        var projectNameSegments =
-            projectPathSegments.flatMap { Utils.split(it, lowercase = true, nonAlphaNumeric = true, camelCase = true) };
+        var projectNameSegments = projectPathSegments.flatMap {
+            Utils.split(
+                it, lowercase = true, nonAlphaNumeric = true, camelCase = true
+            )
+        };
         if (projectNameSegments[0].matches("^modules?$".toRegex())) {
             projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
         }

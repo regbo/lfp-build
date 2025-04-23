@@ -1,30 +1,22 @@
 package com.lfp
 
-import org.gradle.api.initialization.Settings
-import org.gradle.api.logging.Logger
-import org.gradle.api.logging.Logging
-
 object Utils {
-
-    val logger: Logger by lazy {
-        Logging.getLogger(Settings::class.java)
-    }
 
     fun split(
         str: String?,
-        lowercase: Boolean = false,
         nonAlphaNumeric: Boolean = false,
-        camelCase: Boolean = false
+        camelCase: Boolean = false,
+        lowercase: Boolean = false
     ): List<String> {
         var segments: List<String> = TrimmedList.from(listOf(str))
-        if(lowercase){
-            segments = segments.map { it.lowercase() }
-        }
         if (nonAlphaNumeric) {
             segments = segments.flatMap { splitNonAlphaNumeric(it) }
         }
         if (camelCase) {
             segments = segments.flatMap { splitCamelCase(it) }
+        }
+        if (lowercase) {
+            segments = segments.map { it.lowercase() }
         }
         return segments;
     }
