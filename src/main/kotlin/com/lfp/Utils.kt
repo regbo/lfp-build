@@ -2,13 +2,18 @@ package com.lfp
 
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.Logger
+import org.gradle.api.logging.Logging
 
 
 object Utils {
-    private val SETTINGS_GET_LOGGER_METHOD = Settings::class.java.getMethod("getLogger")
 
     fun logger(settings: Settings): Logger {
-        return SETTINGS_GET_LOGGER_METHOD.invoke(settings) as Logger
+        return try {
+            val method = settings.javaClass.getMethod("getLogger")
+            method.invoke(settings) as Logger
+        } catch (e: NoSuchMethodException) {
+            return Logging.getLogger(Settings::class.java)
+        }
     }
 
     fun split(

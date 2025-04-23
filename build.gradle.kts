@@ -40,12 +40,15 @@ tasks.test {
 
 buildConfig {
     packageName(pluginImplementationClassName.get().substringBeforeLast("."))
-    className(pluginName.get() + "Config")
+    className(pluginName.get() + "Properties")
     properties.keys.forEach { key ->
         if (key.matches("^[a-zA-Z_\$][a-zA-Z0-9_\$]*\$".toRegex())) {
-            val value = property(key).toString()
-            println("key - $key value - $value")
-            buildConfigField(key, value)
+            val value = property(key)
+            if (value is Number) {
+                buildConfigField(key, value)
+            } else if (value is String) {
+                buildConfigField(key, value)
+            }
         }
     }
 

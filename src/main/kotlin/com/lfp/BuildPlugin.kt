@@ -99,7 +99,7 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
         project.dependencies.add(
             "implementation",
-            project.dependencies.enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${BuildPluginConfig.spring_boot_dependencies_version}")
+            project.dependencies.enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${BuildPluginProperties.spring_boot_dependencies_version}")
         )
     }
 
