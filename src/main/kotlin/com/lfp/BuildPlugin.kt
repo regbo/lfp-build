@@ -92,13 +92,12 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
         Library.fromProps().forEach { library ->
-            Utils.logger.lifecycle("adding library - $library")
+            project.logger.lifecycle("adding library - $library")
             val notation = library.version?.let { "${library.module}:${library.version}" } ?: library.module
-            val dependencyNotation: Any
-            if (library.enforcedPlatform) {
-                dependencyNotation = project.dependencies.enforcedPlatform(notation)
+            val dependencyNotation: Any = if (library.enforcedPlatform) {
+                project.dependencies.enforcedPlatform(notation)
             } else {
-                dependencyNotation = notation
+                notation
             }
             project.dependencies.add(library.configurationName, dependencyNotation)
             if (library.version != null) {
