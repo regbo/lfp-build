@@ -41,16 +41,15 @@ class BuildPlugin : Plugin<Settings> {
         val projectDirFile = projectDir.toFile()
         val projectPathSegments = segments(projectDirFile.relativeTo(settings.rootDir).path)
         if (projectPathSegments.isEmpty()) return false
-        val projectNameSegments = projectPathSegments.toMutableList();
+        var projectNameSegments = projectPathSegments.toList();
         if (projectNameSegments[0].matches("^modules?$".toRegex())) {
-            projectNameSegments.removeAt(0);
+            projectNameSegments = projectNameSegments.subList(1, projectNameSegments.size)
         }
         val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":" + projectPathSegments.subList(0, projectPathSegments.size - 1)
             .joinToString(":") + ":" + projectName
-        println("including project - projectDir:$projectDir projectPath:$projectPath")
+        println("including project - projectDir - $projectDir projectPath - $projectPath projectName - $projectName")
         settings.include(projectPath)
-
         val projectDescriptor = settings.findProject(projectPath)!!
         projectDescriptor.name = projectName
         projectDescriptor.projectDir = projectDirFile
@@ -59,7 +58,8 @@ class BuildPlugin : Plugin<Settings> {
                 if (project.projectDir == projectDirFile) {
                     project.extra["projectPathSegments"] = projectPathSegments
                     project.extra["projectNameSegments"] = projectNameSegments
-                    project.extra["packageDirSegments"] = segments(project.group.toString()) + projectNameSegments
+                    val packageDirSegments = segments(project.group.toString()) + projectNameSegments
+                    project.extra["packageDirSegments"] = packageDirSegments
                 }
             }
         })
