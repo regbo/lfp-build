@@ -111,8 +111,8 @@ class UtilsTest {
         @Test
         fun `split with lowercase, camelCase, and nonAlphaNumeric`() {
             val result =
-                Utils.split("Hello-JSONParser_2024", lowercase = true, nonAlphaNumeric = true, camelCase = true)
-            assertEquals(listOf("hello", "jsonparser", "2024"), result)
+                Utils.split("Hello-JSONParser_2024", nonAlphaNumeric = true, camelCase = true, lowercase = true)
+            assertEquals(listOf("hello", "json", "parser", "2024"), result)
         }
 
         @Test

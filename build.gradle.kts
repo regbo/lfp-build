@@ -7,7 +7,15 @@ plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
     `maven-publish`
+    id("com.github.gmazzo.buildconfig") version "5.6.2"
 }
+
+
+dependencies {
+    testImplementation(platform("org.junit:junit-bom:5.10.5"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+}
+
 
 val pluginId = providers.provider {
     listOf("repository_group", "repository_owner", "repository_name").map {
@@ -26,11 +34,20 @@ gradlePlugin {
     }
 }
 
-dependencies {
-    testImplementation(platform("org.junit:junit-bom:5.10.5"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-}
-
 tasks.test {
     useJUnitPlatform()
+}
+
+buildConfig {
+    packageName(pluginImplementationClassName.get().substringBeforeLast("."))
+    className(pluginName.get() + "Config")
+    properties.keys.forEach { key ->
+        if (key.matches("^[a-zA-Z_\$][a-zA-Z0-9_\$]*\$".toRegex())) {
+            val value = property(key).toString()
+            println("key - $key value - $value")
+            buildConfigField(key, value)
+        }
+    }
+
+
 }

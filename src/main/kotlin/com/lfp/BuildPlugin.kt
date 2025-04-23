@@ -57,9 +57,10 @@ class BuildPlugin : Plugin<Settings> {
         if (projectNameSegments.isEmpty()) return false
         val projectName = projectNameSegments.joinToString("-")
         val projectPath = ":$projectName"
-        logger.log(
-            LogLevel.LIFECYCLE, "including project $projectPath [${projectPathSegments.joinToString("/")}]"
-        )
+        val logMessage = "including project $projectPath [${projectPathSegments.joinToString("/")}]"
+        logger.log(LogLevel.LIFECYCLE, logMessage)
+        Utils.logger(settings).lifecycle(logMessage)
+        Utils.logger(settings).log(LogLevel.INFO, logMessage)
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
         projectDescriptor.name = projectName
@@ -67,9 +68,7 @@ class BuildPlugin : Plugin<Settings> {
         settings.gradle.beforeProject(object : Action<Project> {
             override fun execute(project: Project) {
                 if (project.projectDir == projectDirFile) {
-                    project.extra["projectPathSegments"] = projectPathSegments
-                    project.extra["projectNameSegments"] = projectNameSegments
-                    project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
+                    configureProject(settings, project, projectPathSegments, projectNameSegments)
                 }
             }
         })
@@ -88,6 +87,23 @@ class BuildPlugin : Plugin<Settings> {
         return projectNameSegments
     }
 
+
+    private fun configureProject(
+        settings: Settings,
+        project: Project,
+        projectPathSegments: List<String>,
+        projectNameSegments: List<String>
+    ) {
+        project.extra["projectPathSegments"] = projectPathSegments
+        project.extra["projectNameSegments"] = projectNameSegments
+        project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
+        project.dependencies.add(
+            "implementation",
+            project.dependencies.enforcedPlatform("org.springframework.boot:spring-boot-dependencies:${BuildPluginConfig.spring_boot_dependencies_version}")
+        )
+    }
+
+
     private fun packageDirSegments(project: Project, projectNameSegments: List<String>): List<String> {
         var groupSegments = Utils.split(project.group.toString(), nonAlphaNumeric = true)
         if (groupSegments.isEmpty() && project != project.rootProject) {
@@ -105,5 +121,6 @@ class BuildPlugin : Plugin<Settings> {
         }
         return packageDirSegments.toList();
     }
+
 }
 

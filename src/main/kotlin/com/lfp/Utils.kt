@@ -1,6 +1,15 @@
 package com.lfp
 
+import org.gradle.api.initialization.Settings
+import org.gradle.api.logging.Logger
+
+
 object Utils {
+    private val SETTINGS_GET_LOGGER_METHOD = Settings::class.java.getMethod("getLogger")
+
+    fun logger(settings: Settings): Logger {
+        return SETTINGS_GET_LOGGER_METHOD.invoke(settings) as Logger
+    }
 
     fun split(
         str: String?,
