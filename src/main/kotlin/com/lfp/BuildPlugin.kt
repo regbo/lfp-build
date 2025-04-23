@@ -38,7 +38,8 @@ class BuildPlugin : Plugin<Settings> {
 
     @Suppress("ObjectLiteralToLambda")
     private fun include(settings: Settings, projectDir: Path): Boolean {
-        val projectPathSegments = projectPathSegments(settings, projectDir)
+        val projectDirFile = projectDir.toFile()
+        val projectPathSegments = segments(projectDirFile.relativeTo(settings.rootDir).path)
         if (projectPathSegments.isEmpty()) return false
         val projectNameSegments = projectPathSegments.toMutableList();
         if (projectNameSegments[0].matches("^modules?$".toRegex())) {
@@ -49,7 +50,7 @@ class BuildPlugin : Plugin<Settings> {
             .joinToString(":") + ":" + projectName
         println("including project - projectDir:$projectDir projectPath:$projectPath")
         settings.include(projectPath)
-        val projectDirFile = projectDir.toFile()
+
         val projectDescriptor = settings.findProject(projectPath)!!
         projectDescriptor.name = projectName
         projectDescriptor.projectDir = projectDirFile
@@ -58,15 +59,15 @@ class BuildPlugin : Plugin<Settings> {
                 if (project.projectDir == projectDirFile) {
                     project.extra["projectPathSegments"] = projectPathSegments
                     project.extra["projectNameSegments"] = projectNameSegments
+                    project.extra["packageDirSegments"] = segments(project.group.toString()) + projectNameSegments
                 }
             }
         })
         return true
     }
 
-    private fun projectPathSegments(settings: Settings, projectDir: Path): List<String> {
-        return projectDir.toFile().relativeTo(settings.rootDir).path.split(Pattern.quote(File.separator)).asSequence()
-            .flatMap { it.split("[^a-zA-Z0-9]+".toRegex()) }
+    private fun segments(path: String): List<String> {
+        return path.split("[^a-zA-Z0-9]+".toRegex())
             .flatMap { it.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])".toRegex()) }.filter { it.isNotEmpty() }
             .toList()
     }
