@@ -39,7 +39,7 @@ gradlePlugin {
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 var versionCatalogLibraries = versionCatalog.libraryAliases.associateWith { alias ->
     val dep = versionCatalog.findLibrary(alias).get().get()
-    "${dep.module}:${dep.version}"
+    "${dep.module}:${dep.version ?: ""}"
 }
 
 buildConfig {
