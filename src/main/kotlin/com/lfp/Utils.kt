@@ -24,6 +24,8 @@ object Utils {
         var segments: List<String> = listOf(str)
         if (nonAlphaNumeric) {
             segments = segments.flatMap { it.split("[^a-zA-Z0-9]+".toRegex()) }
+        } else {
+            segments = segments.flatMap { it.split("\\s*,\\s*".toRegex()) }
         }
         if (camelCase) {
             segments = segments.flatMap { StringUtils.splitByCharacterTypeCamelCase(it).toList() }

@@ -1,7 +1,10 @@
+import java.io.Serializable
+
 repositories {
     gradlePluginPortal()
     mavenCentral()
 }
+
 
 plugins {
     `kotlin-dsl`
@@ -10,13 +13,11 @@ plugins {
     id("com.github.gmazzo.buildconfig") version "5.6.2"
 }
 
-
 dependencies {
-    implementation("org.apache.commons:commons-lang3:${providers.gradleProperty("apache_commons_lang3_version").get()}")
+    implementation(libs.apache.commons.lang3)
     testImplementation(platform("org.junit:junit-bom:5.10.5"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
-
 
 val pluginId = providers.provider {
     listOf("repository_group", "repository_owner", "repository_name").map {
@@ -35,8 +36,10 @@ gradlePlugin {
     }
 }
 
-tasks.test {
-    useJUnitPlatform()
+val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+var versionCatalogLibraries = versionCatalog.libraryAliases.associateWith { alias ->
+    val dep = versionCatalog.findLibrary(alias).get().get()
+    "${dep.module}:${dep.version}"
 }
 
 buildConfig {
@@ -52,6 +55,11 @@ buildConfig {
             }
         }
     }
+    buildConfigField("versionCatalogLibraries", versionCatalogLibraries)
 
 
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

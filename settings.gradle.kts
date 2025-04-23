@@ -1,1 +1,1 @@
-rootProject.name = "lfp-build"
+rootProject.name = providers.gradleProperty("repository_name").get()

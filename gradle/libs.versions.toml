@@ -1,0 +1,46 @@
+[versions]
+spring-boot = "3.3.5"
+record-builder = "44"
+auto-record = "5728efe333f48d23817f2d619e6490228f42b48a"
+immutables = "2.10.1"
+
+[plugins]
+owasp-dependencycheck = { id = 'org.owasp.dependencycheck', version = '12.1.0' }
+jib = { id = 'com.google.cloud.tools.jib', version = '3.4.5' }
+
+[libraries]
+# Framework, Build, and Test Infrastructure
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.9.1" }
+
+# Common Utilities and Core Libraries
+apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
+logback-classic = { module = 'ch.qos.logback:logback-classic' }
+apache-logging-log4j-to-slf4j = { module = "org.apache.logging.log4j:log4j-to-slf4j" }
+slf4j-jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j" }
+one-util-streamex = { module = "one.util:streamex", version = "0.8.3" }
+#google-gson = { module = "com.google.code.gson:gson", version = "2.10.1" }
+#google-findbugs = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
+#projectlombok-lombok = { module = "org.projectlombok:lombok", version = "1.18.32" }
+#
+## Code Generation, Immutability, and Bytecode Manipulation
+#record-builder-core = { module = "io.soabase.record-builder:record-builder-core", version.ref = "record-builder" }
+#record-builder-processor = { module = "io.soabase.record-builder:record-builder-processor", version.ref = "record-builder" }
+#auto-record = { module = "com.github.regbo.lfp-auto-record:auto-record", version.ref = "auto-record" }
+#auto-record-api = { module = "com.github.regbo.lfp-auto-record:auto-record-api", version.ref = "auto-record" }
+#immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
+#immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
+#immutables-builder = { module = "org.immutables:builder", version.ref = "immutables" }
+#immutables-data = { module = "com.github.immutables.immutables:data", version.ref = "immutables" }
+#squareup-javapoet = { module = "com.github.FabricMC:javapoet", version = "d9b7dba158" }
+#javaassit = { module = "org.javassist:javassist", version = "3.29.2-GA" }
+#
+## Specialized and Integration Libraries
+#robinfriedli-threadpool = { module = "com.github.robinfriedli:ThreadPool", version = "1.2.0" }
+#rockaport-alice = { module = "com.github.rockaport:alice", version = "0.9.0" }
+#jillesvangurp-jsonj = { module = "com.github.jillesvangurp:jsonj", version = "v2.56" }
+#orbitz-consul-client = { module = "com.orbitz.consul:consul-client", version = "1.5.3" }
+#redisson = { module = "org.redisson:redisson", version = "3.45.0" }
+#fasterxml-uuid = { module = "com.fasterxml.uuid:java-uuid-generator", version = "4.3.0" }
+#zaxxer-nuprocess = { module = "com.zaxxer:nuprocess", version = "3.0.0" }
+#simplejavamail = { module = "org.simplejavamail:simple-java-mail", version = "8.12.5" }

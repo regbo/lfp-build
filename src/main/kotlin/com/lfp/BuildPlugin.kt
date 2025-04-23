@@ -4,7 +4,6 @@ import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
-import org.gradle.api.logging.LogLevel
 import org.gradle.api.logging.Logging
 import org.gradle.internal.extensions.core.extra
 import java.io.File
@@ -14,7 +13,6 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
-import kotlin.math.min
 
 class BuildPlugin : Plugin<Settings> {
 
@@ -93,18 +91,26 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectPathSegments"] = projectPathSegments
         project.extra["projectNameSegments"] = projectNameSegments
         project.extra["packageDirSegments"] = packageDirSegments(project, projectNameSegments)
-        addDependency(
-            project,
-            "org.springframework.boot:spring-boot-dependencies",
-            BuildPluginProperties.spring_boot_dependencies_version,
-            enforcedPlatform = true
-        )
-        addDependency(project, "org.apache.commons:commons-lang3", BuildPluginProperties.apache_commons_lang3_version)
-        addDependency(project, "one.util:streamex", BuildPluginProperties.one_util_streamex_version)
-        addDependency(project, "ch.qos.logback:logback-classic", BuildPluginProperties.qos_logback_classic_version)
-        addDependency(project, "org.apache.logging.log4j:log4j-to-slf4j")
-        addDependency(project, "org.slf4j:jul-to-slf4j")
-        addDependency(project, "org.springframework.boot:spring-boot-starter-test", configurationName = "testImplementation")
+        Library.fromProps().forEach { library ->
+            val notation = library.version?.let { "${library.module}:${library.version}" } ?: library.module
+            val dependencyNotation: Any
+            if (library.enforcedPlatform) {
+                dependencyNotation = project.dependencies.enforcedPlatform(notation)
+            } else {
+                dependencyNotation = notation
+            }
+            project.dependencies.add(library.configurationName, dependencyNotation)
+            if (library.version != null) {
+                project.dependencies.constraints {
+                    add(library.configurationName, notation) {
+                        version {
+                            require(library.version)
+                        }
+                    }
+                }
+            }
+
+        }
     }
 
 
@@ -126,31 +132,33 @@ class BuildPlugin : Plugin<Settings> {
         return packageDirSegments.toList();
     }
 
-    private fun addDependency(
-        project: Project,
-        module: String,
-        minimumVersion: String? = null,
-        configurationName: String = "implementation",
-        enforcedPlatform: Boolean = false
-    ) {
-        val notation = minimumVersion?.let { "$module:$it" } ?: module
-        val dependencyNotation: Any
-        if (enforcedPlatform) {
-            dependencyNotation = project.dependencies.enforcedPlatform(notation)
-        } else {
-            dependencyNotation = notation
-        }
-        project.dependencies.add(configurationName, dependencyNotation)
-        if (minimumVersion != null) {
-            project.dependencies.constraints {
-                add(configurationName, notation) {
-                    version {
-                        require(minimumVersion)
-                    }
-                }
-            }
-        }
-    }
 
 }
 
+private data class Library(
+    val configurationName: String,
+    val alias: String,
+    val module: String,
+    val version: String? = null,
+    val enforcedPlatform: Boolean
+) {
+    companion object {
+        fun fromProps(): List<Library> {
+            val enforcedModules = Utils.split(BuildPluginProperties.enforced_platform_modules).toSet()
+            val testImplementationModules = Utils.split(BuildPluginProperties.test_implementation_modules).toSet()
+
+            return BuildPluginProperties.versionCatalogLibraries.map { (alias, fullNotation) ->
+                val parts = fullNotation.split(':').toList()
+                val module = parts.subList(0, parts.size - 1).joinToString(":")
+                val version = parts.lastOrNull()
+                Library(
+                    configurationName = if (module in testImplementationModules) "testImplementation" else "implementation",
+                    alias = alias,
+                    module = module,
+                    version = if (version.isNullOrBlank() || "null" == version || parts.size < 3) null else version,
+                    enforcedPlatform = module in enforcedModules
+                )
+            }
+        }
+    }
+}
