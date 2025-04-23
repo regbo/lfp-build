@@ -51,8 +51,8 @@ class BuildPlugin : Plugin<Settings> {
         println("including project - projectDir - $projectDir projectPath - $projectPath projectName - $projectName")
         settings.include(projectPath)
         val projectDescriptor = settings.project(projectPath)
-        projectDescriptor.name = projectName
         projectDescriptor.projectDir = projectDirFile
+        projectDescriptor.name = projectName
         settings.gradle.beforeProject(object : Action<Project> {
             override fun execute(project: Project) {
                 if (project.projectDir == projectDirFile) {
