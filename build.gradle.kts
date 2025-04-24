@@ -1,23 +1,25 @@
+// === Repositories used for resolving plugins and dependencies ===
 repositories {
     gradlePluginPortal()
     mavenCentral()
 }
 
+// === Plugins used in the plugin project ===
 plugins {
-    `kotlin-dsl`                       // Enables Kotlin DSL support for Gradle
-    `java-gradle-plugin`              // Registers a Gradle plugin
-    `maven-publish`                   // Enables publishing to Maven repositories
-    id("com.github.gmazzo.buildconfig") version "5.6.2" // For generating BuildConfig-like constants
+    `kotlin-dsl`                       // Enables Kotlin DSL support in the build script
+    `java-gradle-plugin`              // Allows declaring and publishing a Gradle plugin
+    `maven-publish`                   // Adds support for publishing to Maven repositories
+    id("com.github.gmazzo.buildconfig") version "5.6.2" // Generates BuildConfig constants from properties
 }
 
-
-// === Dependencies for implementation and testing ===
+// === Declare implementation and test dependencies ===
 dependencies {
     implementation(libs.apache.commons.lang3)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
 }
 
+// === Configure Java toolchain based on a Gradle property (java_version) ===
 val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
 
 java {
@@ -27,10 +29,10 @@ java {
 }
 
 kotlin {
-    jvmToolchain(javaVersion.get())
+    jvmToolchain(javaVersion.get()) // Applies the same JVM target to Kotlin compilation
 }
 
-// === Compute plugin ID from gradle.properties values ===
+// === Compute the plugin ID from gradle.properties values ===
 val pluginId = providers.provider {
     listOf("repository_group", "repository_owner", "repository_name")
         .map { providers.gradleProperty(it).getOrElse("") }
@@ -38,15 +40,14 @@ val pluginId = providers.provider {
         .joinToString(".")
 }
 
-// === Resolve plugin implementation class name and plugin name ===
+// === Resolve the plugin implementation class and extract the plugin name ===
 val pluginImplementationClassName = providers.gradleProperty("plugin_implementation_class_name")
 val pluginName = pluginImplementationClassName.map { it.substringAfterLast('.') }
 
-// === Set group from the package of the plugin implementation class ===
+// === Set the group to the package of the plugin implementation class ===
 group = pluginImplementationClassName.get().substringBeforeLast(".")
 
-
-// === Gradle plugin declaration ===
+// === Register the plugin with the given ID and implementation class ===
 gradlePlugin {
     plugins {
         register(pluginName.get()) {
@@ -56,16 +57,15 @@ gradlePlugin {
     }
 }
 
-// === Access to the shared version catalog ===
+// === Access the shared version catalog (libs.versions.toml) ===
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
-// === Generate BuildConfig class with useful constants ===
+// === Generate a BuildConfig class with constants from properties and the version catalog ===
 buildConfig {
-    // Package and class name for the generated BuildConfig
     packageName(group as String)
     className(pluginName.get() + "BuildConfig")
 
-    // Inject all valid Gradle properties as constants
+    // Include all valid Gradle properties (as Strings or Numbers) as constants
     properties.keys.forEach { key ->
         if (key.matches("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$".toRegex())) {
             val value = property(key)
@@ -76,7 +76,7 @@ buildConfig {
         }
     }
 
-    // Add version catalog library coordinates as a map field
+    // Add all version catalog libraries as a map of alias -> module:version
     buildConfigField(
         "versionCatalogLibraries",
         versionCatalog.libraryAliases.associateWith { alias ->
@@ -85,14 +85,14 @@ buildConfig {
         }
     )
 
-    // Inject custom extras (collected earlier in settings.gradle.kts)
+    // Include platform/test alias sets extracted in settings.gradle.kts
     listOf("versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach { name ->
         @Suppress("UNCHECKED_CAST")
         buildConfigField(name, project.extra[name] as Set<String>)
     }
 }
 
-// === Test configuration ===
+// === Configure test task to use JUnit 5 (via Jupiter) ===
 tasks.test {
-    useJUnitPlatform() // Enables JUnit 5
+    useJUnitPlatform()
 }
