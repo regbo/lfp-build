@@ -1,4 +1,8 @@
+import com.lfp.buildplugin.shared.Utils
+
+
 // === Repositories used for resolving plugins and dependencies ===
+
 repositories {
     gradlePluginPortal()
     mavenCentral()
@@ -11,20 +15,34 @@ plugins {
     `maven-publish`                   // Adds support for publishing to Maven repositories
 }
 
+kotlin {
+    sourceSets {
+        getByName("main") {
+            kotlin.srcDir("buildSrc/src/main/kotlin")
+        }
+    }
+}
+
+
 // === Declare implementation and test dependencies ===
 dependencies {
-    @Suppress("UNCHECKED_CAST")
-    (project.extra["buildDependencies"] as List<String>).forEach { buildDependency ->
-        implementation(buildDependency)
-    }
-    implementation(libs.apache.commons.lang3)
-    implementation(libs.apache.commons.lang3)
-    testImplementation(platform(libs.junit.bom))
-    testImplementation(libs.junit.jupiter)
+    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+}
+
+val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
+libs.libraryAliases.forEach { alias ->
+    val dep = libs.findLibrary(alias).get().get()
+    val dependencyNotation = "${dep.module}:${dep.versionConstraint.requiredVersion}"
+    println(dependencyNotation)
+    dependencies.add("implementation", dependencyNotation)
 }
 
 // === Configure Java toolchain based on a Gradle property (java_version) ===
 val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
+
+//com.lfp.buildplugin.util.Utils.sayHi()
+Utils.sayHi()
 
 java {
     toolchain {
@@ -35,6 +53,9 @@ java {
 kotlin {
     jvmToolchain(javaVersion.get()) // Applies the same JVM target to Kotlin compilation
 }
+
+
+sourceSets["main"].kotlin.srcDir(file("buildSrc/src/main"))
 
 // === Compute the plugin ID from gradle.properties values ===
 val pluginId = providers.provider {

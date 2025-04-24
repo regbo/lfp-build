@@ -1,12 +1,20 @@
 package com.lfp.buildplugin
 
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.util.regex.Pattern
+import com.lfp.buildplugin.shared.Utils
+import org.gradle.internal.impldep.com.amazonaws.util.ValidationUtils.assertNotEmpty
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.*
 
 class UtilsTest {
+
+    @Test
+    fun `say hi`() {
+        Utils.sayHi()
+    }
 
     @Test
     fun `split path`() {
@@ -25,51 +33,79 @@ class UtilsTest {
         assertEquals(listOf("sub", "dir", "name", "file", "name"), result)
     }
 
+    @Test
+    fun `split comma`() {
+        val result = Utils.split(
+            "this   ,   is,a  ,test, wow"
+        )
+        assertEquals(listOf("this", "is", "a", "test", "wow"), result)
+    }
 
-    @Nested
-    inner class SplitCombined {
+    @Test
+    fun `split comma quoted`() {
+        val result = Utils.split(
+            "\"this   \",\"   is\",\"a  \",\"test, wow\""
+        )
+        assertEquals(listOf("this", "is", "a", "test, wow"), result)
+    }
 
-        @Test
-        fun `split only trims`() {
-            val result = Utils.split("  Hello  ")
-            assertEquals(listOf("Hello"), result)
-        }
+    @Test
+    fun `split only trims`() {
+        val result = Utils.split("  Hello  ")
+        assertEquals(listOf("Hello"), result)
+    }
 
-        @Test
-        fun `split with lowercase`() {
-            val result = Utils.split("  Hello World ", lowercase = true)
-            assertEquals(listOf("hello world"), result)
-        }
+    @Test
+    fun `split with lowercase`() {
+        val result = Utils.split("  Hello World ", lowercase = true)
+        assertEquals(listOf("hello world"), result)
+    }
 
-        @Test
-        fun `split non alpha numeric with lowercase`() {
-            val result = Utils.split("  Hello World ", lowercase = true, nonAlphaNumeric = true)
-            assertEquals(listOf("hello", "world"), result)
-        }
+    @Test
+    fun `split non alpha numeric with lowercase`() {
+        val result = Utils.split("  Hello World ", lowercase = true, nonAlphaNumeric = true)
+        assertEquals(listOf("hello", "world"), result)
+    }
 
-        @Test
-        fun `split with non-alphanumeric`() {
-            val result = Utils.split("Hello-World_2024", nonAlphaNumeric = true)
-            assertEquals(listOf("Hello", "World", "2024"), result)
-        }
+    @Test
+    fun `split with non-alphanumeric`() {
+        val result = Utils.split("Hello-World_2024", nonAlphaNumeric = true)
+        assertEquals(listOf("Hello", "World", "2024"), result)
+    }
 
-        @Test
-        fun `split with camelCase`() {
-            val result = Utils.split("HTTPRequestParser", camelCase = true)
-            assertEquals(listOf("HTTP", "Request", "Parser"), result)
-        }
+    @Test
+    fun `split with camelCase`() {
+        val result = Utils.split("HTTPRequestParser", camelCase = true)
+        assertEquals(listOf("HTTP", "Request", "Parser"), result)
+    }
 
-        @Test
-        fun `split with lowercase, camelCase, and nonAlphaNumeric`() {
-            val result =
-                Utils.split("Hello-JSONParser_2024", nonAlphaNumeric = true, camelCase = true, lowercase = true)
-            assertEquals(listOf("hello", "json", "parser", "2024"), result)
-        }
+    @Test
+    fun `split with lowercase, camelCase, and nonAlphaNumeric`() {
+        val result =
+            Utils.split("Hello-JSONParser_2024", nonAlphaNumeric = true, camelCase = true, lowercase = true)
+        assertEquals(listOf("hello", "json", "parser", "2024"), result)
+    }
 
-        @Test
-        fun `split with null and empty string`() {
-            assertEquals(emptyList<String>(), Utils.split(null))
-            assertEquals(emptyList<String>(), Utils.split("  "))
-        }
+    @Test
+    fun `split with null and empty string`() {
+        assertEquals(emptyList<String>(), Utils.split(null))
+        assertEquals(emptyList<String>(), Utils.split("  "))
+    }
+
+    @Test
+    fun `read resource`() {
+        assertFalse(Utils.resourceFiles(File("build"), forceCopy = true).isEmpty())
+    }
+
+    @Test
+    fun `read resource tomls`() {
+        val tomls = Utils.resourceFiles(File("build")).filter { it.extension == "toml" }
+        assertFalse(tomls.isEmpty())
+    }
+
+    @Test
+    fun `read resource tomls forceCopy`() {
+        val tomls = Utils.resourceFiles(File("build"), forceCopy = true).filter { it.extension == "toml" }
+        assertFalse(tomls.isEmpty())
     }
 }

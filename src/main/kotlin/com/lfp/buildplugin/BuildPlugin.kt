@@ -1,11 +1,19 @@
 package com.lfp.buildplugin
 
-import org.gradle.api.*
+import com.lfp.buildplugin.shared.Utils
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.LogLevel
 import org.gradle.internal.extensions.core.extra
+import org.gradle.kotlin.dsl.getByType
+import org.springframework.util.DigestUtils
 import java.io.File
-import java.nio.file.*
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 
@@ -13,19 +21,17 @@ import java.util.regex.Pattern
  * A Gradle plugin that dynamically discovers subprojects and configures them
  * based on their directory structure and naming.
  */
-@Suppress("ObjectLiteralToLambda")
 class BuildPlugin : Plugin<Settings> {
 
     /**
      * Entry point: Applies the plugin to the [Settings] object.
      */
     override fun apply(settings: Settings) {
+        configureVersionCatalogs(settings)
         // Configure the root project
-        settings.gradle.beforeProject(object : Action<Project> {
-            override fun execute(project: Project) {
-                if (project.projectDir == settings.rootDir) {
-                    configureProject(project, emptyList(), Utils.split(project.name))
-                }
+        settings.gradle.beforeProject(Utils.action { project ->
+            if (project.projectDir == settings.rootDir) {
+                configureProject(project, emptyList(), Utils.split(project.name))
             }
         })
 
@@ -36,6 +42,64 @@ class BuildPlugin : Plugin<Settings> {
                     return FileVisitResult.SKIP_SUBTREE
                 }
                 return super.preVisitDirectory(dir, attrs)
+            }
+        })
+    }
+
+    private fun configureVersionCatalogs(settings: Settings) {
+        val resourceFiles = Utils.resourceFiles(settings)
+        val versionCatalogPattern = Pattern.compile("^(\\w+?)(Platform)?\\.libs.versions.toml$")
+        for (resourceFile in resourceFiles) {
+            val matcher = versionCatalogPattern.matcher(resourceFile.name)
+            if (matcher.find()) {
+                val configurationName = matcher.group(1)
+                val platform = matcher.group(2).isNotEmpty()
+                configureVersionCatalog(settings, resourceFile, configurationName, platform)
+            }
+        }
+    }
+
+    private fun configureVersionCatalog(
+        settings: Settings,
+        versionCatalogFile: File,
+        configurationName: String,
+        platform: Boolean
+    ) {
+        val versionCatalogFilePath = versionCatalogFile.canonicalFile.absolutePath
+        val versionCatalogFilePathHash =
+            DigestUtils.md5DigestAsHex(versionCatalogFilePath.toByteArray())
+        val versionCatalogName = "$configurationName${if (platform) "_platform" else ""}_$versionCatalogFilePathHash"
+        settings.dependencyResolutionManagement.versionCatalogs.create(versionCatalogName) {
+            from(versionCatalogFile)
+        }
+        val configurationNames = mutableListOf("testImplementation")
+        if ("api" == configurationName) {
+            configurationNames.add(0, "implementation")
+        }
+        if (!configurationNames.contains(configurationName)) configurationNames.add(0, configurationName)
+        settings.gradle.afterProject(Utils.action { project ->
+            val added = configurationNames
+                .mapNotNull { project.configurations.findByName(it) }
+                .any { configuration ->
+                    val libs = project.extensions.getByType<VersionCatalogsExtension>()
+                        .named(versionCatalogName)
+                    val libraryAliases = libs.libraryAliases
+                    if (libraryAliases.isNotEmpty()) {
+                        libraryAliases.forEach { alias ->
+                            val dep = libs.findLibrary(alias).get().get()
+                            val notation = "${dep.module}:${dep.versionConstraint.requiredVersion}"
+                            val dependencyNotation: Any =
+                                if (platform) project.dependencies.enforcedPlatform(notation) else notation
+                            project.dependencies.add(configuration.name, dependencyNotation)
+                        }
+                        project.logger.log(LogLevel.INFO, "added version catalog - $versionCatalogFilePath")
+                        true
+                    } else {
+                        false
+                    }
+                }
+            if (!added) {
+                project.logger.log(LogLevel.INFO, "skipping version catalog - $versionCatalogFilePath")
             }
         })
     }
@@ -79,11 +143,9 @@ class BuildPlugin : Plugin<Settings> {
         descriptor.name = projectName
         descriptor.projectDir = projectDirFile
 
-        settings.gradle.beforeProject(object : Action<Project> {
-            override fun execute(project: Project) {
-                if (project.projectDir == projectDirFile) {
-                    configureProject(project, projectPathSegments, projectNameSegments)
-                }
+        settings.gradle.beforeProject(Utils.action { project ->
+            if (project.projectDir == projectDirFile) {
+                configureProject(project, projectPathSegments, projectNameSegments)
             }
         })
 
@@ -106,12 +168,6 @@ class BuildPlugin : Plugin<Settings> {
             configureProjectSrcDir(project, packageDirSegments)
         }
         LombokPlugin().apply(project)
-
-        project.afterEvaluate(object : Action<Project> {
-            override fun execute(project: Project) {
-                configureProjectAfterEvaluate(project)
-            }
-        })
     }
 
     /**
@@ -137,34 +193,6 @@ class BuildPlugin : Plugin<Settings> {
         srcMainLanguageDir.mkdirs()
     }
 
-    /**
-     * Adds external libraries declared via BuildConfig to the appropriate configurations.
-     */
-    private fun configureProjectAfterEvaluate(project: Project) {
-        val api = project.configurations.findByName("api")
-        val impl = project.configurations.findByName("implementation")
-        val testImpl = project.configurations.findByName("testImplementation")
-        VersionCatalog.instance.libraries.map { it.value }.filter { !it.buildOnly }.forEach { libraryEntry ->
-            val configurations = when {
-                libraryEntry.testImplementation -> listOf(testImpl)
-                libraryEntry.enforcedPlatform -> listOf(impl, testImpl)
-                else -> listOf(api, impl, testImpl)
-            }
-
-            val added = configurations.any { config ->
-                if (config != null) {
-                    val dependencyNotation = libraryEntry.dependencyNotation(project)
-                    project.logger.log(LogLevel.DEBUG, "added library to ${config.name} - $libraryEntry")
-                    project.dependencies.add(config.name, dependencyNotation)
-                    true
-                } else false
-            }
-
-            if (!added) {
-                project.logger.log(LogLevel.DEBUG, "skipping library - $libraryEntry")
-            }
-        }
-    }
 
     /**
      * Derives a clean list of name segments from a project path.

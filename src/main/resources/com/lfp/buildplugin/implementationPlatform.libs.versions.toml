@@ -1,0 +1,5 @@
+[versions]
+spring-boot = "3.3.5"
+
+[libraries]
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
