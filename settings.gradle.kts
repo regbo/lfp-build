@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import java.io.BufferedWriter
 import java.io.FileInputStream
 import java.io.FileWriter
@@ -70,7 +72,7 @@ fun versionCatalogNormalize(node: JsonNode?) {
 
 // === Load TOML file using Jackson TomlMapper ===
 val tomlMapper = TomlMapper()
-tomlMapper.findAndRegisterModules()
+tomlMapper.registerModules(Jdk8Module(), KotlinModule.Builder().build())
 val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
 versionCatalogNormalize(versionCatalogNode)
 

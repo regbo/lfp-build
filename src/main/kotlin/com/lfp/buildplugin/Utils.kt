@@ -2,6 +2,8 @@ package com.lfp.buildplugin
 
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
+import com.fasterxml.jackson.module.kotlin.KotlinFeature
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import groovy.lang.Closure
 import org.apache.commons.lang3.StringUtils
 import org.gradle.api.initialization.Settings
@@ -17,7 +19,7 @@ object Utils {
 
     val tomlMapper: TomlMapper by lazy {
         val tomlMapper = TomlMapper()
-        tomlMapper.findAndRegisterModules()
+        tomlMapper.registerModules(Jdk8Module(), KotlinModule.Builder().build())
         tomlMapper
     }
 
