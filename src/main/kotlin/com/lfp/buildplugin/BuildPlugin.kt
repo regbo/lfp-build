@@ -68,7 +68,8 @@ class BuildPlugin : Plugin<Settings> {
             val matcher = filenamePattern.matcher(filename)
             if (matcher.find()) {
                 val configurationName = matcher.group(1)
-                val platform = matcher.group(2).isNotEmpty()
+                val platformGroup = matcher.group(2)
+                val platform = platformGroup != null && platformGroup.isNotEmpty()
                 configureVersionCatalog(settings, resource, configurationName, platform)
                 found = true
             }
