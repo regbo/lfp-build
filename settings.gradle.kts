@@ -46,7 +46,8 @@ val versionCatalogHashHeader: String by lazy {
 val tomlMapper = TomlMapper()
 val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
 
-// === Collect aliases for special flags: enforcedPlatform and testImplementation ===
+// === Collect aliases for special flags ===
+val versionCatalogBuildOnlyAliases = mutableSetOf<String>()
 val versionCatalogEnforcedPlatformAliases = mutableSetOf<String>()
 val versionCatalogTestImplementationAliases = mutableSetOf<String>()
 
@@ -57,6 +58,7 @@ if (libraries.isObject) {
             val libraryObject = value as ObjectNode
             val alias = key.replace("-", ".")
             mapOf(
+                "buildOnly" to versionCatalogBuildOnlyAliases,
                 "enforcedPlatform" to versionCatalogEnforcedPlatformAliases,
                 "testImplementation" to versionCatalogTestImplementationAliases
             ).forEach { (field, collector) ->
@@ -98,7 +100,11 @@ dependencyResolutionManagement {
 @Suppress("ObjectLiteralToLambda")
 gradle.beforeProject(object : Action<Project> {
     override fun execute(project: Project) {
+        project.extra.set(::versionCatalogBuildOnlyAliases.name, versionCatalogBuildOnlyAliases.toSet())
         project.extra.set(::versionCatalogEnforcedPlatformAliases.name, versionCatalogEnforcedPlatformAliases.toSet())
-        project.extra.set(::versionCatalogTestImplementationAliases.name, versionCatalogTestImplementationAliases.toSet())
+        project.extra.set(
+            ::versionCatalogTestImplementationAliases.name,
+            versionCatalogTestImplementationAliases.toSet()
+        )
     }
 })

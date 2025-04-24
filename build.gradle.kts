@@ -85,7 +85,7 @@ buildConfig {
     )
 
     // Include platform/test alias sets extracted in settings.gradle.kts
-    listOf("versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach { name ->
+    listOf("versionCatalogBuildOnlyAliases","versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach { name ->
         @Suppress("UNCHECKED_CAST")
         buildConfigField(name, project.extra[name] as Set<String>)
     }

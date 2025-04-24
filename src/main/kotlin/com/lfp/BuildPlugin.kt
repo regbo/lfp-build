@@ -1,7 +1,6 @@
 package com.lfp
 
 import org.gradle.api.*
-import org.gradle.api.artifacts.Configuration
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.LogLevel
 import org.gradle.internal.extensions.core.extra
@@ -103,10 +102,10 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
-
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
+        LombokPlugin().apply(project)
 
         project.afterEvaluate(object : Action<Project> {
             override fun execute(project: Project) {
@@ -146,27 +145,28 @@ class BuildPlugin : Plugin<Settings> {
         val impl = project.configurations.findByName("implementation")
         val testImpl = project.configurations.findByName("testImplementation")
 
-        Library.fromProps().forEach { library ->
-            val configurations = when {
-                library.testImplementation -> listOf(testImpl)
-                library.enforcedPlatform -> listOf(impl, testImpl)
-                else -> listOf(api, impl, testImpl)
-            }
+        VersionCatalogLibrary.all
+            .filter { !it.buildOnly }
+            .forEach { library ->
+                val configurations = when {
+                    library.testImplementation -> listOf(testImpl)
+                    library.enforcedPlatform -> listOf(impl, testImpl)
+                    else -> listOf(api, impl, testImpl)
+                }
 
-            val added = configurations.any { config ->
-                if (config != null) {
-                    val notation = library.version?.let { "${library.module}:${it}" } ?: library.module
-                    val dependencyNotation: Any = if (library.enforcedPlatform) project.dependencies.enforcedPlatform(notation) else notation
-                    project.logger.log(LogLevel.DEBUG, "added library to ${config.name} - $library")
-                    project.dependencies.add(config.name, dependencyNotation)
-                    true
-                } else false
-            }
+                val added = configurations.any { config ->
+                    if (config != null) {
+                        val dependencyNotation = library.dependencyNotation(project)
+                        project.logger.log(LogLevel.DEBUG, "added library to ${config.name} - $library")
+                        project.dependencies.add(config.name, dependencyNotation)
+                        true
+                    } else false
+                }
 
-            if (!added) {
-                project.logger.log(LogLevel.DEBUG, "skipping library - $library")
+                if (!added) {
+                    project.logger.log(LogLevel.DEBUG, "skipping library - $library")
+                }
             }
-        }
     }
 
     /**
@@ -204,34 +204,4 @@ class BuildPlugin : Plugin<Settings> {
     }
 }
 
-/**
- * Represents a dependency declared in the version catalog and its properties.
- */
-private data class Library(
-    val alias: String,
-    val module: String,
-    val version: String? = null,
-    val enforcedPlatform: Boolean,
-    val testImplementation: Boolean
-) {
-    companion object {
-        /**
-         * Creates [Library] instances from `BuildConfig` values generated earlier.
-         */
-        fun fromProps(): List<Library> {
-            return BuildPluginBuildConfig.versionCatalogLibraries.map { (alias, notation) ->
-                val parts = notation.split(':')
-                val module = parts.dropLast(1).joinToString(":")
-                val version = parts.lastOrNull()?.takeIf { it.isNotBlank() && parts.size >= 2 }
 
-                Library(
-                    alias = alias,
-                    module = module,
-                    version = version,
-                    enforcedPlatform = alias in BuildPluginBuildConfig.versionCatalogEnforcedPlatformAliases,
-                    testImplementation = alias in BuildPluginBuildConfig.versionCatalogTestImplementationAliases,
-                )
-            }
-        }
-    }
-}
