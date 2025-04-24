@@ -35,17 +35,6 @@ plugins {
 
 Replace `<COMMIT or TAG or BRANCH>` with the Git reference you want to use.
 
-## Required Properties
-
-Define the following properties in `gradle.properties` or pass them via `-P`:
-
-```properties
-repository_group=com.example
-repository_owner=yourgithubuser
-repository_name=your-project-name
-plugin_implementation_class_name=com.example.BuildPlugin
-```
-
 ## Version Catalog Integration
 
 The plugin expects a version catalog file named `libs.versions.toml` at the root. It parses the file, removes `enforcedPlatform` and `testImplementation` flags, and rewrites the file with a content hash to avoid redundant writes. The parsed flags are stored in `project.extra` and used to configure dependencies appropriately.
