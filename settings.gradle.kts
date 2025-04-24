@@ -16,6 +16,7 @@ buildscript {
     val jacksonVersion = providers.gradleProperty("jackson_version").get()
     val buildDependencies = listOf(
         "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion",
+        "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion",
         "com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion",
         "com.fasterxml.jackson.dataformat:jackson-dataformat-toml:$jacksonVersion",
     )

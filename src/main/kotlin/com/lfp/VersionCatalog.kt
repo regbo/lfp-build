@@ -30,6 +30,7 @@ interface BuildOnlyAware {
 data class PluginEntry(
     val id: String,
     val version: String,
+    val apply: Boolean = false,
     override val buildOnly: Boolean = false
 ) : BuildOnlyAware
 
