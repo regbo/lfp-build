@@ -3,6 +3,7 @@ package com.lfp.buildplugin
 import com.lfp.buildplugin.shared.Utils
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.LogLevel
@@ -87,7 +88,7 @@ class BuildPlugin : Plugin<Settings> {
                     if (libraryAliases.isNotEmpty()) {
                         libraryAliases.forEach { alias ->
                             val dep = libs.findLibrary(alias).get().get()
-                            val notation = "${dep.module}:${dep.versionConstraint.requiredVersion}"
+                            val notation = notation(dep)
                             val dependencyNotation: Any =
                                 if (platform) project.dependencies.enforcedPlatform(notation) else notation
                             project.dependencies.add(configuration.name, dependencyNotation)
@@ -102,6 +103,11 @@ class BuildPlugin : Plugin<Settings> {
                 project.logger.log(LogLevel.INFO, "skipping version catalog - $versionCatalogFilePath")
             }
         })
+    }
+
+    private fun notation(dep: MinimalExternalModuleDependency): Any {
+        var version = dep.versionConstraint.requiredVersion
+        return "${dep.module}:$version"
     }
 
     /**

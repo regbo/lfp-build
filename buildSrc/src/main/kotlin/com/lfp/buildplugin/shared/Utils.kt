@@ -73,7 +73,7 @@ object Utils {
         val packageNameParts = this::class.java.packageName.split(".")
         val pathPrefixes = mutableListOf(packageNameParts.joinToString("/"))
         if (packageNameParts.size > 1) {
-            pathPrefixes += packageNameParts.subList(0, packageNameParts.size - 1).joinToString("/")
+            pathPrefixes.add(packageNameParts.subList(0, packageNameParts.size - 1).joinToString("/"))
         }
         pathPrefixes.add("")
         val pathPrefixesSize = pathPrefixes.size
