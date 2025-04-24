@@ -1,9 +1,9 @@
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import java.security.DigestOutputStream
-import java.security.MessageDigest
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
 import java.io.*
+import java.security.DigestOutputStream
+import java.security.MessageDigest
 
 buildscript {
     val jacksonVersion = providers.gradleProperty("jackson_version").get()
