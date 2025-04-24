@@ -23,6 +23,11 @@ import java.util.regex.Pattern
  * based on their directory structure and naming.
  */
 class BuildPlugin : Plugin<Settings> {
+//    private val props: Map<String, Any?> by lazy {
+//        BuildPluginBuildConfig::class.memberProperties.associate { prop ->
+//            prop.name to prop.get(instance)
+//        }
+//    }
 
     /**
      * Entry point: Applies the plugin to the [Settings] object.
@@ -93,14 +98,14 @@ class BuildPlugin : Plugin<Settings> {
                                 if (platform) project.dependencies.enforcedPlatform(notation) else notation
                             project.dependencies.add(configuration.name, dependencyNotation)
                         }
-                        project.logger.log(LogLevel.INFO, "added version catalog - $versionCatalogFilePath")
+                        project.logger.lifecycle("added version catalog - $versionCatalogFilePath")
                         true
                     } else {
                         false
                     }
                 }
             if (!added) {
-                project.logger.log(LogLevel.INFO, "skipping version catalog - $versionCatalogFilePath")
+                project.logger.lifecycle("skipping version catalog - $versionCatalogFilePath")
             }
         })
     }
