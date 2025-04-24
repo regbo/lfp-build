@@ -13,6 +13,10 @@ plugins {
 
 // === Declare implementation and test dependencies ===
 dependencies {
+    @Suppress("UNCHECKED_CAST")
+    (project.extra["buildDependencies"] as List<String>).forEach { buildDependency ->
+        implementation(buildDependency)
+    }
     implementation(libs.apache.commons.lang3)
     implementation(libs.apache.commons.lang3)
     testImplementation(platform(libs.junit.bom))

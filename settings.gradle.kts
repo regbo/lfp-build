@@ -104,11 +104,6 @@ dependencyResolutionManagement {
 @Suppress("ObjectLiteralToLambda")
 gradle.beforeProject(object : Action<Project> {
     override fun execute(project: Project) {
-        project.afterEvaluate {
-            @Suppress("UNCHECKED_CAST")
-            (settings.extra["buildDependencies"] as List<String>).forEach { buildDependency ->
-                project.dependencies.add("implementation", buildDependency)
-            }
-        }
+        project.extra["buildDependencies"] = settings.extra["buildDependencies"]
     }
 })
