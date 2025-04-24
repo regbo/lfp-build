@@ -5,72 +5,87 @@ import java.io.*
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 
+// === Buildscript classpath setup for Jackson and TOML support ===
 buildscript {
     val jacksonVersion = providers.gradleProperty("jackson_version").get()
     val buildDependencies = listOf(
-        "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}",
-        "com.fasterxml.jackson.module:jackson-module-kotlin:${jacksonVersion}",
-        "com.fasterxml.jackson.dataformat:jackson-dataformat-toml:${jacksonVersion}",
+        "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion",
+        "com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion",
+        "com.fasterxml.jackson.dataformat:jackson-dataformat-toml:$jacksonVersion",
     )
+
     repositories {
         mavenCentral()
     }
+
     dependencies {
-        for (buildDependency in buildDependencies) {
-            classpath(buildDependency)
-        }
+        buildDependencies.forEach { classpath(it) }
     }
 }
 
+// === Set the root project name from a Gradle property ===
 rootProject.name = providers.gradleProperty("repository_name").get()
 
+// === File reference for the original version catalog ===
 val versionCatalogFile = file("libs.versions.toml")
+
+// === Compute MD5 hash of the version catalog for caching ===
 val versionCatalogHashHeader: String by lazy {
     val md = MessageDigest.getInstance("MD5")
     FileInputStream(versionCatalogFile).use { input ->
         DigestOutputStream(object : OutputStream() {
-            override fun write(b: Int) {}
+            override fun write(b: Int) {} // no-op sink
         }, md).use { digestOut ->
             input.copyTo(digestOut)
         }
     }
-    val hash = md.digest().joinToString("") { "%02x".format(it) }
-    "#${hash}"
+    "#${md.digest().joinToString("") { "%02x".format(it) }}"
 }
+
+// === Load TOML file using Jackson TomlMapper ===
 val tomlMapper = TomlMapper()
 val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
+
+// === Collect aliases for special flags: enforcedPlatform and testImplementation ===
 val versionCatalogEnforcedPlatformAliases = mutableSetOf<String>()
 val versionCatalogTestImplementationAliases = mutableSetOf<String>()
-val libraries: JsonNode = versionCatalogNode.at("/libraries")
+
+val libraries = versionCatalogNode.at("/libraries")
 if (libraries.isObject) {
-    for (libraryEntry in libraries.fields()) {
-        val libraryName = libraryEntry.key
-        val alias = libraryName.replace("-", ".")
-        val libraryNode = libraryEntry.value
-        if (libraryNode.isObject) {
-            val libraryObjectNode = libraryNode as ObjectNode
-            val enforcedPlatform = libraryObjectNode.remove("enforcedPlatform")
-            if (enforcedPlatform != null && enforcedPlatform.booleanValue()) {
-                versionCatalogEnforcedPlatformAliases.add(alias)
-            }
-            val testImplementation = libraryObjectNode.remove("testImplementation")
-            if (testImplementation != null && testImplementation.booleanValue()) {
-                versionCatalogTestImplementationAliases.add(alias)
+    for ((key, value) in libraries.fields()) {
+        if (value.isObject) {
+            val libraryObject = value as ObjectNode
+            val alias = key.replace("-", ".")
+            mapOf(
+                "enforcedPlatform" to versionCatalogEnforcedPlatformAliases,
+                "testImplementation" to versionCatalogTestImplementationAliases
+            ).forEach { (field, collector) ->
+                val removed = libraryObject.remove(field)
+                if (removed?.booleanValue() == true) {
+                    collector.add(alias)
+                }
             }
         }
     }
 }
+
+// === Generate and optionally reuse the cleaned version catalog ===
 val generatedVersionCatalogFile = file("build/generated/libs.versions.toml")
 val generatedVersionCatalogFileValid = generatedVersionCatalogFile.exists() &&
-        generatedVersionCatalogFile.bufferedReader().use(BufferedReader::readLine) == versionCatalogHashHeader
+        generatedVersionCatalogFile.bufferedReader().use { it.readLine() } == versionCatalogHashHeader
+
 if (!generatedVersionCatalogFileValid) {
-    generatedVersionCatalogFile.parentFile.mkdirs()
+    if (!generatedVersionCatalogFile.delete()) {
+        generatedVersionCatalogFile.parentFile.mkdirs()
+    }
+
     BufferedWriter(FileWriter(generatedVersionCatalogFile)).use { writer ->
         writer.write("$versionCatalogHashHeader\n")
         tomlMapper.writeValue(writer, versionCatalogNode)
     }
 }
 
+// === Inject the generated version catalog into Gradle resolution ===
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
@@ -79,13 +94,11 @@ dependencyResolutionManagement {
     }
 }
 
+// === Expose alias sets to all projects via project.extra ===
 @Suppress("ObjectLiteralToLambda")
 gradle.beforeProject(object : Action<Project> {
     override fun execute(project: Project) {
-        project.extra["versionCatalogEnforcedPlatformAliases"] = versionCatalogEnforcedPlatformAliases.toSet()
-        project.extra["versionCatalogTestImplementationAliases"] = versionCatalogTestImplementationAliases.toSet()
+        project.extra.set(::versionCatalogEnforcedPlatformAliases.name, versionCatalogEnforcedPlatformAliases.toSet())
+        project.extra.set(::versionCatalogTestImplementationAliases.name, versionCatalogTestImplementationAliases.toSet())
     }
 })
-
-
-
