@@ -93,6 +93,11 @@ object Utils {
         }
     }
 
+    fun fileCollection(settings: Settings, vararg files: File): FileCollection {
+        @Suppress("UnstableApiUsage")
+        return settings.layout.rootDirectory.files(files)
+    }
+
     fun <T : Any> action(consumer: Consumer<T>): Action<T> {
         return object : Action<T> {
             override fun execute(t: T) {
