@@ -192,7 +192,7 @@ private data class Library(
 ) {
     companion object {
         fun fromProps(): List<Library> {
-            return BuildPluginProperties.versionCatalogLibraries.map { (alias, fullNotation) ->
+            return BuildPluginPropertiesBuildConfig.versionCatalogLibraries.map { (alias, fullNotation) ->
                 val parts = fullNotation.split(':').toList()
                 val module = parts.subList(0, parts.size - 1).joinToString(":")
                 val version = parts.lastOrNull()?.takeIf { it.isNotBlank() && parts.size >= 2 }
@@ -200,8 +200,8 @@ private data class Library(
                     alias = alias,
                     module = module,
                     version = version,
-                    enforcedPlatform = alias in BuildPluginProperties.versionCatalogEnforcedPlatformAliases,
-                    testImplementation = alias in BuildPluginProperties.versionCatalogTestImplementationAliases,
+                    enforcedPlatform = alias in BuildPluginPropertiesBuildConfig.versionCatalogEnforcedPlatformAliases,
+                    testImplementation = alias in BuildPluginPropertiesBuildConfig.versionCatalogTestImplementationAliases,
                 )
             }
         }

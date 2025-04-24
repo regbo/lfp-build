@@ -70,6 +70,7 @@ if (!generatedVersionCatalogFileValid) {
         tomlMapper.writeValue(writer, versionCatalogNode)
     }
 }
+
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
@@ -77,6 +78,8 @@ dependencyResolutionManagement {
         }
     }
 }
+
+@Suppress("ObjectLiteralToLambda")
 gradle.beforeProject(object : Action<Project> {
     override fun execute(project: Project) {
         project.extra["versionCatalogEnforcedPlatformAliases"] = versionCatalogEnforcedPlatformAliases.toSet()

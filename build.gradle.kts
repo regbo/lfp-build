@@ -38,7 +38,7 @@ val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("lib
 
 buildConfig {
     packageName(pluginImplementationClassName.get().substringBeforeLast("."))
-    className(pluginName.get() + "Properties")
+    className(pluginName.get() + "BuildConfig")
     properties.keys.forEach { key ->
         if (key.matches("^[a-zA-Z_\$][a-zA-Z0-9_\$]*\$".toRegex())) {
             val value = property(key)
