@@ -34,7 +34,7 @@ buildscript {
 rootProject.name = providers.gradleProperty("repository_name").get()
 
 // === File reference for the original version catalog ===
-val versionCatalogFile = file("libs.versions.toml")
+val versionCatalogFile = file("src/main/resources/com/lfp/buildplugin/libs.versions.toml")
 
 // === Compute MD5 hash of the version catalog for caching ===
 val versionCatalogHashHeader: String by lazy {
@@ -69,7 +69,8 @@ fun versionCatalogNormalize(node: JsonNode?) {
 }
 
 // === Load TOML file using Jackson TomlMapper ===
-val tomlMapper: ObjectMapper = TomlMapper().findAndRegisterModules()
+val tomlMapper = TomlMapper()
+tomlMapper.findAndRegisterModules()
 val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
 versionCatalogNormalize(versionCatalogNode)
 
