@@ -1,10 +1,9 @@
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import java.io.FileInputStream
-import java.io.OutputStream
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
+import java.io.*
 
 buildscript {
     val jacksonVersion = providers.gradleProperty("jackson_version").get()
@@ -13,7 +12,6 @@ buildscript {
         "com.fasterxml.jackson.module:jackson-module-kotlin:${jacksonVersion}",
         "com.fasterxml.jackson.dataformat:jackson-dataformat-toml:${jacksonVersion}",
     )
-    extra["buildDependencies"] = buildDependencies
     repositories {
         mavenCentral()
     }
@@ -23,24 +21,20 @@ buildscript {
         }
     }
 }
-fun buildDependencies(): List<String> {
-    @Suppress("UNCHECKED_CAST") return extra["buildDependencies"] as List<String>
-}
-
 
 rootProject.name = providers.gradleProperty("repository_name").get()
 
 val versionCatalogFile = file("libs.versions.toml")
-val versionCatalogHash: String by lazy {
+val versionCatalogHashHeader: String by lazy {
     val md = MessageDigest.getInstance("MD5")
     FileInputStream(versionCatalogFile).use { input ->
         DigestOutputStream(OutputStream.nullOutputStream(), md).use { digestOut ->
             input.copyTo(digestOut)
         }
     }
-    md.digest().joinToString("") { "%02x".format(it) }
+    val hash = md.digest().joinToString("") { "%02x".format(it) }
+    "#${hash}"
 }
-
 val tomlMapper = TomlMapper()
 val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
 val versionCatalogEnforcedPlatformAliases = mutableSetOf<String>()
@@ -65,7 +59,15 @@ if (libraries.isObject) {
     }
 }
 val generatedVersionCatalogFile = file("build/generated/libs.versions.toml")
-tomlMapper.writeValue(generatedVersionCatalogFile, versionCatalogNode)
+val generatedVersionCatalogFileValid = generatedVersionCatalogFile.exists() &&
+        generatedVersionCatalogFile.bufferedReader().use(BufferedReader::readLine) == versionCatalogHashHeader
+if (!generatedVersionCatalogFileValid) {
+    generatedVersionCatalogFile.parentFile.mkdirs()
+    BufferedWriter(FileWriter(generatedVersionCatalogFile)).use { writer ->
+        writer.write("$versionCatalogHashHeader\n")
+        tomlMapper.writeValue(writer, versionCatalogNode)
+    }
+}
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
