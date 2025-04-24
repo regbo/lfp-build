@@ -17,17 +17,19 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
+import kotlin.reflect.full.memberProperties
 
 /**
  * A Gradle plugin that dynamically discovers subprojects and configures them
  * based on their directory structure and naming.
  */
 class BuildPlugin : Plugin<Settings> {
-//    private val props: Map<String, Any?> by lazy {
-//        BuildPluginBuildConfig::class.memberProperties.associate { prop ->
-//            prop.name to prop.get(instance)
-//        }
-//    }
+
+    private val buildConfigProperties: Map<String, Any?> by lazy {
+        BuildPluginBuildConfig::class.memberProperties.associate { prop ->
+            prop.name to prop.get(BuildPluginBuildConfig)
+        }
+    }
 
     /**
      * Entry point: Applies the plugin to the [Settings] object.
@@ -54,6 +56,7 @@ class BuildPlugin : Plugin<Settings> {
 
     private fun configureVersionCatalogs(settings: Settings) {
         val resourceFiles = Utils.resourceFiles(settings)
+        var versionCatalogFound = false
         val versionCatalogPattern = Pattern.compile("^(\\w+?)(Platform)?\\.libs.versions.toml$")
         for (resourceFile in resourceFiles) {
             val matcher = versionCatalogPattern.matcher(resourceFile.name)
@@ -61,7 +64,11 @@ class BuildPlugin : Plugin<Settings> {
                 val configurationName = matcher.group(1)
                 val platform = matcher.group(2).isNotEmpty()
                 configureVersionCatalog(settings, resourceFile, configurationName, platform)
+                versionCatalogFound = true
             }
+        }
+        if (!versionCatalogFound) {
+            Utils.logger.lifecycle("version catalogs not found")
         }
     }
 

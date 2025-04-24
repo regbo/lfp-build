@@ -18,6 +18,7 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.core.io.ResourceLoader
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
+import org.springframework.core.io.support.ResourcePatternResolver
 import org.springframework.util.DigestUtils
 import org.springframework.util.ResourceUtils
 import java.io.File
@@ -38,9 +39,14 @@ object Utils {
         tomlMapper
     }
 
-    val resourceLoader: ResourceLoader by lazy {
+    private val resourceLoader: ResourceLoader by lazy {
         DefaultResourceLoader()
     }
+
+    private val resourcePatternResolver: ResourcePatternResolver by lazy {
+        PathMatchingResourcePatternResolver()
+    }
+
 
     fun sayHi() {
         println("hi there")
@@ -95,9 +101,9 @@ object Utils {
                 val locationPath = (if (pathPrefix.isEmpty()) "" else "$pathPrefix/") + path
                 if (locationPath.isEmpty()) continue
                 if (locationPrefix.isEmpty()) {
-                    val resolver = PathMatchingResourcePatternResolver()
-                    val resources = resolver.getResources("classpath*:${locationPath}/*").filter { it.isReadable }
-                        .filterNot { it.url.toString().endsWith("/") || it.filename?.endsWith(".class") == true }
+                    val resources =
+                        resourcePatternResolver.getResources("classpath*:${locationPath}/*").filter { it.isReadable }
+                            .filterNot { it.url.toString().endsWith("/") || it.filename?.endsWith(".class") == true }
                     if (resources.isNotEmpty()) {
                         return resources.toList()
                     }
