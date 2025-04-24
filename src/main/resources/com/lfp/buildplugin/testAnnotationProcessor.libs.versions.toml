@@ -1,1 +1,2 @@
+[libraries]
 lombok = { module = "org.projectlombok:lombok", version = "1.18.38" }

@@ -17,7 +17,7 @@ buildscript {
     }
 
     dependencies {
-        buildDependencies.forEach { classpath(it ) }
+        buildDependencies.forEach { classpath(it) }
     }
 }
 
