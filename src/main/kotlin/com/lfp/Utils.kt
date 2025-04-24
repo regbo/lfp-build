@@ -38,7 +38,7 @@ object Utils {
 
     fun <T> closure(delegate: Any? = null, block: () -> T): Closure<T> {
         return object : Closure<T>(delegate) {
-            override fun call(): T = block()
+            override fun call(vararg args: Any?): T = block()
         }
     }
 }
