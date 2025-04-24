@@ -25,6 +25,8 @@ val pluginId = providers.provider {
 val pluginImplementationClassName = providers.gradleProperty("plugin_implementation_class_name")
 val pluginName = pluginImplementationClassName.map { it.substringAfterLast('.') }
 
+group = pluginImplementationClassName.get().substringBeforeLast(".")
+
 gradlePlugin {
     plugins {
         register(pluginName.get()) {
@@ -37,7 +39,7 @@ gradlePlugin {
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 buildConfig {
-    packageName(pluginImplementationClassName.get().substringBeforeLast("."))
+    packageName(group as String)
     className(pluginName.get() + "BuildConfig")
     properties.keys.forEach { key ->
         if (key.matches("^[a-zA-Z_\$][a-zA-Z0-9_\$]*\$".toRegex())) {
@@ -53,7 +55,7 @@ buildConfig {
         val dep = versionCatalog.findLibrary(alias).get().get()
         "${dep.module}:${dep.version ?: ""}"
     })
-    listOf("versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach{name->
+    listOf("versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach { name ->
         @Suppress("UNCHECKED_CAST")
         buildConfigField(
             name,
