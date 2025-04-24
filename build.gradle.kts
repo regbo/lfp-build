@@ -9,7 +9,7 @@ plugins {
     `kotlin-dsl`                       // Enables Kotlin DSL support in the build script
     `java-gradle-plugin`              // Allows declaring and publishing a Gradle plugin
     `maven-publish`                   // Adds support for publishing to Maven repositories
-    id("com.github.gmazzo.buildconfig") version "5.6.2" // Generates BuildConfig constants from properties
+    alias(libs.plugins.buildconfig)  // Generates BuildConfig constants from properties
 }
 
 // === Declare implementation and test dependencies ===
@@ -68,8 +68,7 @@ buildConfig {
     // Include all valid Gradle properties (as Strings or Numbers) as constants
     properties.keys.forEach { key ->
         if (key.matches("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$".toRegex())) {
-            val value = property(key)
-            when (value) {
+            when (val value = property(key)) {
                 is Number -> buildConfigField(key, value)
                 is String -> buildConfigField(key, value)
             }

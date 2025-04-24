@@ -1,5 +1,9 @@
+
 [versions]
 spring-boot = "3.3.5"
+
+[plugins]
+buildconfig = { id = "com.github.gmazzo.buildconfig", version = "5.6.2" }
 
 [libraries]
 # platform implementation
