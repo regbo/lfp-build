@@ -95,7 +95,7 @@ object Utils {
 
     fun fileCollection(settings: Settings, vararg files: File): FileCollection {
         @Suppress("UnstableApiUsage")
-        return settings.layout.rootDirectory.files(files)
+        return settings.layout.rootDirectory.files(files.map { it.path })
     }
 
     fun <T : Any> action(consumer: Consumer<T>): Action<T> {
