@@ -70,7 +70,7 @@ object Utils {
     }
 
     fun resources(path: String = ""): List<Resource> {
-        val packageNameParts = this::class.java.packageName.split(".")
+        val packageNameParts = Utils::class.java.packageName.split(".")
         val pathPrefixes = mutableListOf(packageNameParts.joinToString("/"))
         if (packageNameParts.size > 1) {
             pathPrefixes.add(packageNameParts.subList(0, packageNameParts.size - 1).joinToString("/"))
