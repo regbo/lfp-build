@@ -89,7 +89,7 @@ class BuildPlugin : Plugin<Settings> {
         val versionCatalogFilePath = versionCatalogFile.canonicalFile.absolutePath
         val versionCatalogFilePathHash =
             DigestUtils.md5DigestAsHex(versionCatalogFilePath.toByteArray())
-        val versionCatalogName = "$configurationName${if (platform) "_platform" else ""}$versionCatalogFilePathHash"
+        val versionCatalogName = "$configurationName${if (platform) "Platform" else ""}$versionCatalogFilePathHash"
         settings.dependencyResolutionManagement.versionCatalogs.create(versionCatalogName) {
             from(versionCatalogFile)
         }
