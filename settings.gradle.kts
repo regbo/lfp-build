@@ -1,7 +1,13 @@
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
-import java.io.*
+import java.io.BufferedWriter
+import java.io.FileInputStream
+import java.io.FileWriter
+import java.io.OutputStream
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 
@@ -13,7 +19,7 @@ buildscript {
         "com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion",
         "com.fasterxml.jackson.dataformat:jackson-dataformat-toml:$jacksonVersion",
     )
-
+    extra["buildDependencies"] = buildDependencies
     repositories {
         mavenCentral()
     }
@@ -42,34 +48,31 @@ val versionCatalogHashHeader: String by lazy {
     "#${md.digest().joinToString("") { "%02x".format(it) }}"
 }
 
-// === Load TOML file using Jackson TomlMapper ===
-val tomlMapper = TomlMapper()
-val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
-
-// === Collect aliases for special flags ===
-val versionCatalogBuildOnlyAliases = mutableSetOf<String>()
-val versionCatalogEnforcedPlatformAliases = mutableSetOf<String>()
-val versionCatalogTestImplementationAliases = mutableSetOf<String>()
-
-val libraries = versionCatalogNode.at("/libraries")
-if (libraries.isObject) {
-    for ((key, value) in libraries.fields()) {
-        if (value.isObject) {
-            val libraryObject = value as ObjectNode
-            val alias = key.replace("-", ".")
-            mapOf(
-                "buildOnly" to versionCatalogBuildOnlyAliases,
-                "enforcedPlatform" to versionCatalogEnforcedPlatformAliases,
-                "testImplementation" to versionCatalogTestImplementationAliases
-            ).forEach { (field, collector) ->
-                val removed = libraryObject.remove(field)
-                if (removed?.booleanValue() == true) {
-                    collector.add(alias)
-                }
+val versionCatalogRemoveFieldNames = listOf("buildOnly", "enforcedPlatform", "testImplementation")
+fun versionCatalogNormalize(node: JsonNode?) {
+    if (node == null) return
+    else if (node.isObject) {
+        val objectNode = node as ObjectNode
+        val fieldNames = objectNode.fieldNames()
+        while (fieldNames.hasNext()) {
+            val fieldName = fieldNames.next()
+            if (fieldName in versionCatalogRemoveFieldNames) {
+                fieldNames.remove()
+            } else {
+                versionCatalogNormalize(objectNode.get(fieldName))
             }
         }
+    } else if (node.isArray) {
+        (node as ArrayNode).forEach(::versionCatalogNormalize)
     }
 }
+
+// === Load TOML file using Jackson TomlMapper ===
+val versionCatalogContent = versionCatalogFile.readText()
+val tomlMapper: ObjectMapper = TomlMapper().findAndRegisterModules()
+val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogContent)
+versionCatalogNormalize(versionCatalogNode)
+
 
 // === Generate and optionally reuse the cleaned version catalog ===
 val generatedVersionCatalogFile = file("build/generated/libs.versions.toml")
@@ -100,11 +103,12 @@ dependencyResolutionManagement {
 @Suppress("ObjectLiteralToLambda")
 gradle.beforeProject(object : Action<Project> {
     override fun execute(project: Project) {
-        project.extra.set(::versionCatalogBuildOnlyAliases.name, versionCatalogBuildOnlyAliases.toSet())
-        project.extra.set(::versionCatalogEnforcedPlatformAliases.name, versionCatalogEnforcedPlatformAliases.toSet())
-        project.extra.set(
-            ::versionCatalogTestImplementationAliases.name,
-            versionCatalogTestImplementationAliases.toSet()
-        )
+        project.extra.set("versionCatalogContent", versionCatalogContent)
+        project.afterEvaluate {
+            @Suppress("UNCHECKED_CAST")
+            (settings.extra["buildDependencies"] as List<String>).forEach { buildDependency ->
+                project.dependencies.add("implementation", buildDependency)
+            }
+        }
     }
 })

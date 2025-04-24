@@ -1,3 +1,8 @@
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.github.gmazzo.buildconfig.BuildConfigValue
+import groovy.json.StringEscapeUtils
+import java.io.Serializable
+
 // === Repositories used for resolving plugins and dependencies ===
 repositories {
     gradlePluginPortal()
@@ -14,6 +19,7 @@ plugins {
 
 // === Declare implementation and test dependencies ===
 dependencies {
+    implementation(libs.apache.commons.lang3)
     implementation(libs.apache.commons.lang3)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -75,20 +81,6 @@ buildConfig {
         }
     }
 
-    // Add all version catalog libraries as a map of alias -> module:version
-    buildConfigField(
-        "versionCatalogLibraries",
-        versionCatalog.libraryAliases.associateWith { alias ->
-            val dep = versionCatalog.findLibrary(alias).get().get()
-            "${dep.module}:${dep.version ?: ""}"
-        }
-    )
-
-    // Include platform/test alias sets extracted in settings.gradle.kts
-    listOf("versionCatalogBuildOnlyAliases","versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach { name ->
-        @Suppress("UNCHECKED_CAST")
-        buildConfigField(name, project.extra[name] as Set<String>)
-    }
 }
 
 // === Configure test task to use JUnit 5 (via Jupiter) ===

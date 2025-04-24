@@ -7,7 +7,7 @@ class LombokPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         project.extensions.extraProperties["lombok"] = Utils.closure {
             project.logger.lifecycle("adding lombok")
-            val dependencyNotation = VersionCatalogLibrary.find("lombok")!!.dependencyNotation(project)
+            val dependencyNotation = VersionCatalog.instance.findLibrary("lombok")!!.dependencyNotation(project)
             project.dependencies.add("annotationProcessor", dependencyNotation)
             project.dependencies.add("compileOnly", dependencyNotation)
             project.dependencies.add("testAnnotationProcessor", dependencyNotation)

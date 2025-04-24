@@ -144,29 +144,26 @@ class BuildPlugin : Plugin<Settings> {
         val api = project.configurations.findByName("api")
         val impl = project.configurations.findByName("implementation")
         val testImpl = project.configurations.findByName("testImplementation")
-
-        VersionCatalogLibrary.all
-            .filter { !it.buildOnly }
-            .forEach { library ->
-                val configurations = when {
-                    library.testImplementation -> listOf(testImpl)
-                    library.enforcedPlatform -> listOf(impl, testImpl)
-                    else -> listOf(api, impl, testImpl)
-                }
-
-                val added = configurations.any { config ->
-                    if (config != null) {
-                        val dependencyNotation = library.dependencyNotation(project)
-                        project.logger.log(LogLevel.DEBUG, "added library to ${config.name} - $library")
-                        project.dependencies.add(config.name, dependencyNotation)
-                        true
-                    } else false
-                }
-
-                if (!added) {
-                    project.logger.log(LogLevel.DEBUG, "skipping library - $library")
-                }
+        VersionCatalog.instance.libraries.map { it.value }.filter { !it.buildOnly }.forEach { libraryEntry ->
+            val configurations = when {
+                libraryEntry.testImplementation -> listOf(testImpl)
+                libraryEntry.enforcedPlatform -> listOf(impl, testImpl)
+                else -> listOf(api, impl, testImpl)
             }
+
+            val added = configurations.any { config ->
+                if (config != null) {
+                    val dependencyNotation = libraryEntry.dependencyNotation(project)
+                    project.logger.log(LogLevel.DEBUG, "added library to ${config.name} - $libraryEntry")
+                    project.dependencies.add(config.name, dependencyNotation)
+                    true
+                } else false
+            }
+
+            if (!added) {
+                project.logger.log(LogLevel.DEBUG, "skipping library - $libraryEntry")
+            }
+        }
     }
 
     /**
