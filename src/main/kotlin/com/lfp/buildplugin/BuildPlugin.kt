@@ -91,7 +91,7 @@ class BuildPlugin : Plugin<Settings> {
             DigestUtils.md5DigestAsHex(versionCatalogFilePath.toByteArray())
         val versionCatalogName = "$configurationName${if (platform) "Platform" else ""}$versionCatalogFilePathHash"
         settings.dependencyResolutionManagement.versionCatalogs.create(versionCatalogName) {
-            from(versionCatalogFile)
+            from(listOf(versionCatalogFile))
         }
         val configurationNames = mutableListOf("testImplementation")
         if ("api" == configurationName) {

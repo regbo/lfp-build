@@ -13,5 +13,5 @@ jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-d
 apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 apache-commons-csv = { module = "org.apache.commons:commons-csv", version = "1.14.0" }
 
-#[metadata]
-#spring-core = { module = "org.springframework:spring-core", version = "5.3.39" }
+[metadata]
+spring-core = { configurationNames = ["compileOnly"] }
