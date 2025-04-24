@@ -1,4 +1,4 @@
-package com.lfp
+package com.lfp.buildplugin
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested

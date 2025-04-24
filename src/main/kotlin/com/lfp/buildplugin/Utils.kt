@@ -1,5 +1,6 @@
-package com.lfp
+package com.lfp.buildplugin
 
+import com.fasterxml.jackson.dataformat.toml.TomlMapper
 import groovy.lang.Closure
 import org.apache.commons.lang3.StringUtils
 import org.gradle.api.initialization.Settings
@@ -13,6 +14,9 @@ object Utils {
         Logging.getLogger(Settings::class.java)
     }
 
+    val tomlMapper: TomlMapper by lazy {
+        TomlMapper().findAndRegisterModules() as TomlMapper
+    }
 
     fun split(
         str: String?,

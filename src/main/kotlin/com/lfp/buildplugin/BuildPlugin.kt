@@ -1,4 +1,4 @@
-package com.lfp
+package com.lfp.buildplugin
 
 import org.gradle.api.*
 import org.gradle.api.initialization.Settings

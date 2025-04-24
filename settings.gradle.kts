@@ -69,9 +69,8 @@ fun versionCatalogNormalize(node: JsonNode?) {
 }
 
 // === Load TOML file using Jackson TomlMapper ===
-val versionCatalogContent = versionCatalogFile.readText()
 val tomlMapper: ObjectMapper = TomlMapper().findAndRegisterModules()
-val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogContent)
+val versionCatalogNode: JsonNode = tomlMapper.readTree(versionCatalogFile)
 versionCatalogNormalize(versionCatalogNode)
 
 
@@ -104,7 +103,6 @@ dependencyResolutionManagement {
 @Suppress("ObjectLiteralToLambda")
 gradle.beforeProject(object : Action<Project> {
     override fun execute(project: Project) {
-        project.extra.set("versionCatalogContent", versionCatalogContent)
         project.afterEvaluate {
             @Suppress("UNCHECKED_CAST")
             (settings.extra["buildDependencies"] as List<String>).forEach { buildDependency ->

@@ -1,4 +1,4 @@
-package com.lfp
+package com.lfp.buildplugin
 
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
 import org.gradle.api.Project
@@ -15,8 +15,11 @@ data class VersionCatalog internal constructor(
     companion object {
 
         val instance: VersionCatalog by lazy {
-            TomlMapper().findAndRegisterModules()
-                .readValue(BuildPluginBuildConfig.versionCatalogContent, VersionCatalog::class.java)
+            val thisClass = this::class.java;
+            val resourcePath = thisClass.packageName.replace('.', '/') + "/libs.versions.toml"
+            thisClass.classLoader.getResourceAsStream(resourcePath).use { input ->
+                Utils.tomlMapper.readValue(input, VersionCatalog::class.java)
+            }
         }
 
 

@@ -1,8 +1,3 @@
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.gmazzo.buildconfig.BuildConfigValue
-import groovy.json.StringEscapeUtils
-import java.io.Serializable
-
 // === Repositories used for resolving plugins and dependencies ===
 repositories {
     gradlePluginPortal()
@@ -14,7 +9,6 @@ plugins {
     `kotlin-dsl`                       // Enables Kotlin DSL support in the build script
     `java-gradle-plugin`              // Allows declaring and publishing a Gradle plugin
     `maven-publish`                   // Adds support for publishing to Maven repositories
-    alias(libs.plugins.buildconfig)  // Generates BuildConfig constants from properties
 }
 
 // === Declare implementation and test dependencies ===
@@ -61,26 +55,6 @@ gradlePlugin {
             implementationClass = pluginImplementationClassName.get()
         }
     }
-}
-
-// === Access the shared version catalog (libs.versions.toml) ===
-val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-
-// === Generate a BuildConfig class with constants from properties and the version catalog ===
-buildConfig {
-    packageName(group as String)
-    className(pluginName.get() + "BuildConfig")
-
-    // Include all valid Gradle properties (as Strings or Numbers) as constants
-    properties.keys.forEach { key ->
-        if (key.matches("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$".toRegex())) {
-            when (val value = property(key)) {
-                is Number -> buildConfigField(key, value)
-                is String -> buildConfigField(key, value)
-            }
-        }
-    }
-
 }
 
 // === Configure test task to use JUnit 5 (via Jupiter) ===
