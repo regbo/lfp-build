@@ -1,13 +1,11 @@
 package com.lfp.buildplugin
 
-import org.junit.jupiter.api.Nested
+import com.lfp.buildplugin.shared.Utils
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import java.io.File
 import java.util.regex.Pattern
-import com.lfp.buildplugin.shared.Utils
-import org.gradle.internal.impldep.com.amazonaws.util.ValidationUtils.assertNotEmpty
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Assertions.*
 
 class UtilsTest {
 
@@ -93,19 +91,23 @@ class UtilsTest {
     }
 
     @Test
-    fun `read resource`() {
-        assertFalse(Utils.resourceFiles(File("build"), forceCopy = true).isEmpty())
-    }
-
-    @Test
     fun `read resource tomls`() {
-        val tomls = Utils.resourceFiles(File("build")).filter { it.extension == "toml" }
-        assertFalse(tomls.isEmpty())
+        val resourcePatternResolver = PathMatchingResourcePatternResolver()
+        val pattern =
+            "classpath*:**/*.libs.versions.toml"
+        val resources = resourcePatternResolver.getResources(pattern)
+        val resourceFiles = resources.map { Utils.toFile(File("build"), it) }
+        assertFalse(resourceFiles.isEmpty())
     }
 
     @Test
     fun `read resource tomls forceCopy`() {
-        val tomls = Utils.resourceFiles(File("build"), forceCopy = true).filter { it.extension == "toml" }
-        assertFalse(tomls.isEmpty())
+        val resourcePatternResolver = PathMatchingResourcePatternResolver()
+        val pattern =
+            "classpath*:**/*.libs.versions.toml"
+        val resources = resourcePatternResolver.getResources(pattern)
+        val resourceFiles = resources.map { Utils.toFile(File("build"), it, forceCopy = true) }
+        assertFalse(resourceFiles.isEmpty())
     }
 }
+

@@ -39,14 +39,6 @@ object Utils {
         tomlMapper
     }
 
-    private val resourceLoader: ResourceLoader by lazy {
-        DefaultResourceLoader()
-    }
-
-    private val resourcePatternResolver: ResourcePatternResolver by lazy {
-        PathMatchingResourcePatternResolver()
-    }
-
 
     fun sayHi() {
         println("hi there")
@@ -77,81 +69,26 @@ object Utils {
         return TrimmedList.from(segments);
     }
 
-    fun resources(path: String = ""): List<Resource> {
-        val packageNameParts = Utils::class.java.`package`.name.split(".")
-        val pathPrefixes = mutableListOf(packageNameParts.joinToString("/"))
-        if (packageNameParts.size > 1) {
-            pathPrefixes.add(packageNameParts.subList(0, packageNameParts.size - 1).joinToString("/"))
-        }
-        pathPrefixes.add("")
-        val pathPrefixesSize = pathPrefixes.size
-        for (i in 0 until pathPrefixesSize) {
-            val index = pathPrefixes.size - 1 - i
-            val pathPrefix = pathPrefixes[index]
-            pathPrefixes.add(0, "src/main/resources${if (pathPrefix.isEmpty()) "" else "/$pathPrefix"}")
-        }
-        val locationPrefixes = mutableListOf("")
-        if (path.isNotEmpty()) {
-            locationPrefixes.add(0, ResourceUtils.CLASSPATH_URL_PREFIX)
-            locationPrefixes.add(0, ResourceUtils.FILE_URL_PREFIX)
-        }
 
-        for (pathPrefix in pathPrefixes) {
-            for (locationPrefix in locationPrefixes) {
-                val locationPath = (if (pathPrefix.isEmpty()) "" else "$pathPrefix/") + path
-                if (locationPath.isEmpty()) continue
-                if (locationPrefix.isEmpty()) {
-                    val resources =
-                        resourcePatternResolver.getResources("classpath*:${locationPath}/*").filter { it.isReadable }
-                            .filterNot { it.url.toString().endsWith("/") || it.filename?.endsWith(".class") == true }
-                    if (resources.isNotEmpty()) {
-                        return resources.toList()
-                    }
-                }
-                val location = locationPrefix + (if (pathPrefix.isEmpty()) "" else "$pathPrefix/") + path
-                try {
-                    val resource = resourceLoader.getResource(location)
-                    if (resource.isReadable) {
-                        if (resource.isFile) {
-                            val resourceFile = resource.file
-                            if (resourceFile.isDirectory) {
-                                return resourceFile.walkTopDown().filter { it.isFile }.map { FileSystemResource(it) }
-                                    .toList()
-                            }
-                        }
-                        return listOf(resource)
-                    }
-                } catch (_: Exception) {
-                }
-            }
-        }
-        return emptyList()
+    fun toFile(settings: Settings, resource: Resource): File {
+        return toFile(File(settings.rootDir, "build"), resource)
     }
 
-    fun resourceFiles(settings: Settings, path: String = ""): List<File> {
-        return resourceFiles(File(settings.rootDir, "build"), path)
-    }
-
-    fun resourceFiles(buildDir: File, path: String = "", forceCopy: Boolean = false): List<File> {
-        val resources = resources(path)
-        if (resources.isEmpty()) return emptyList()
-        return resources.map { resource ->
-            if (!forceCopy && resource.isFile) {
-                resource.file
-            } else {
-                val uid = "${path}|${resource.uri}"
-                val hash = DigestUtils.md5DigestAsHex(uid.toByteArray())
-                val resourceFile = File(buildDir, "resources/main/generated/$hash/${resource.filename}")
-                if (!resourceFile.isFile) {
-                    resourceFile.parentFile.mkdirs()
-                    resource.inputStream.use { input ->
-                        FileOutputStream(resourceFile).use { output ->
-                            input.copyTo(output)
-                        }
+    fun toFile(buildDir: File, resource: Resource, forceCopy: Boolean = false): File {
+        if (!forceCopy && resource.isFile) {
+            return resource.file
+        } else {
+            val hash = DigestUtils.md5DigestAsHex(resource.uri.toString().toByteArray())
+            val resourceFile = File(buildDir, "generated/resources/$hash/${resource.filename}")
+            if (!resourceFile.isFile) {
+                resourceFile.parentFile.mkdirs()
+                resource.inputStream.use { input ->
+                    FileOutputStream(resourceFile).use { output ->
+                        input.copyTo(output)
                     }
                 }
-                resourceFile
             }
+            return resourceFile
         }
     }
 

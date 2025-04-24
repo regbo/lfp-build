@@ -6,9 +6,10 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
-import org.gradle.api.logging.LogLevel
 import org.gradle.internal.extensions.core.extra
 import org.gradle.kotlin.dsl.getByType
+import org.springframework.core.io.Resource
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.util.DigestUtils
 import java.io.File
 import java.nio.file.FileVisitResult
@@ -55,29 +56,35 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     private fun configureVersionCatalogs(settings: Settings) {
-        val resourceFiles = Utils.resourceFiles(settings)
-        var versionCatalogFound = false
-        val versionCatalogPattern = Pattern.compile("^(\\w+?)(Platform)?\\.libs.versions.toml$")
-        for (resourceFile in resourceFiles) {
-            val matcher = versionCatalogPattern.matcher(resourceFile.name)
+        val resourcePatternResolver = PathMatchingResourcePatternResolver()
+        val pattern =
+            "classpath*:${this::class.java.`package`.name.replace('.', '/')}/*.libs.versions.toml"
+        val resources = resourcePatternResolver.getResources(pattern)
+
+        val filenamePattern = Pattern.compile("^(\\w+?)(Platform)?\\.")
+        var found = false
+        for (resource in resources) {
+            val filename = resource.filename ?: continue
+            val matcher = filenamePattern.matcher(filename)
             if (matcher.find()) {
                 val configurationName = matcher.group(1)
                 val platform = matcher.group(2).isNotEmpty()
-                configureVersionCatalog(settings, resourceFile, configurationName, platform)
-                versionCatalogFound = true
+                configureVersionCatalog(settings, resource, configurationName, platform)
+                found = true
             }
         }
-        if (!versionCatalogFound) {
+        if (!found) {
             Utils.logger.lifecycle("version catalogs not found")
         }
     }
 
     private fun configureVersionCatalog(
         settings: Settings,
-        versionCatalogFile: File,
+        versionCatalogResource: Resource,
         configurationName: String,
         platform: Boolean
     ) {
+        val versionCatalogFile = Utils.toFile(settings, versionCatalogResource);
         val versionCatalogFilePath = versionCatalogFile.canonicalFile.absolutePath
         val versionCatalogFilePathHash =
             DigestUtils.md5DigestAsHex(versionCatalogFilePath.toByteArray())
