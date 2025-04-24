@@ -10,11 +10,24 @@ plugins {
     id("com.github.gmazzo.buildconfig") version "5.6.2" // For generating BuildConfig-like constants
 }
 
+
 // === Dependencies for implementation and testing ===
 dependencies {
     implementation(libs.apache.commons.lang3)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
+}
+
+val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaVersion.get()))
+    }
+}
+
+kotlin {
+    jvmToolchain(javaVersion.get())
 }
 
 // === Compute plugin ID from gradle.properties values ===
