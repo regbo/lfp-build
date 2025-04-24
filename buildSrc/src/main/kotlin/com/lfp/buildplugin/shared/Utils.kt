@@ -17,6 +17,7 @@ import org.springframework.core.io.DefaultResourceLoader
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.Resource
 import org.springframework.core.io.ResourceLoader
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.util.DigestUtils
 import org.springframework.util.ResourceUtils
 import java.io.File
@@ -83,27 +84,38 @@ object Utils {
             val pathPrefix = pathPrefixes[index]
             pathPrefixes.add(0, "src/main/resources${if (pathPrefix.isEmpty()) "" else "/$pathPrefix"}")
         }
-        val locationPrefixes = listOf(ResourceUtils.FILE_URL_PREFIX, ResourceUtils.CLASSPATH_URL_PREFIX, "")
+        val locationPrefixes = mutableListOf("")
+        if (path.isNotEmpty()) {
+            locationPrefixes.add(0, ResourceUtils.CLASSPATH_URL_PREFIX)
+            locationPrefixes.add(0, ResourceUtils.FILE_URL_PREFIX)
+        }
+
         for (pathPrefix in pathPrefixes) {
             for (locationPrefix in locationPrefixes) {
+                val locationPath = (if (pathPrefix.isEmpty()) "" else "$pathPrefix/") + path
+                if (locationPath.isEmpty()) continue
+                if (locationPrefix.isEmpty()) {
+                    val resolver = PathMatchingResourcePatternResolver()
+                    val resources = resolver.getResources("classpath*:${locationPath}/*").filter { it.isReadable }
+                        .filterNot { it.url.toString().endsWith("/") || it.filename?.endsWith(".class") == true }
+                    if (resources.isNotEmpty()) {
+                        return resources.toList()
+                    }
+                }
                 val location = locationPrefix + (if (pathPrefix.isEmpty()) "" else "$pathPrefix/") + path
                 try {
                     val resource = resourceLoader.getResource(location)
-                    if (resource.exists()) {
+                    if (resource.isReadable) {
                         if (resource.isFile) {
                             val resourceFile = resource.file
                             if (resourceFile.isDirectory) {
-                                return resourceFile
-                                    .walkTopDown()
-                                    .filter { it.isFile }
-                                    .map { FileSystemResource(it) }
+                                return resourceFile.walkTopDown().filter { it.isFile }.map { FileSystemResource(it) }
                                     .toList()
                             }
                         }
                         return listOf(resource)
                     }
                 } catch (_: Exception) {
-
                 }
             }
         }
@@ -118,7 +130,7 @@ object Utils {
         val resources = resources(path)
         if (resources.isEmpty()) return emptyList()
         return resources.map { resource ->
-            if (!forceCopy) {
+            if (!forceCopy && resource.isFile) {
                 resource.file
             } else {
                 val uid = "${path}|${resource.uri}"
