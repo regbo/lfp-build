@@ -28,7 +28,9 @@ val versionCatalogFile = file("libs.versions.toml")
 val versionCatalogHashHeader: String by lazy {
     val md = MessageDigest.getInstance("MD5")
     FileInputStream(versionCatalogFile).use { input ->
-        DigestOutputStream(OutputStream.nullOutputStream(), md).use { digestOut ->
+        DigestOutputStream(object : OutputStream() {
+            override fun write(b: Int) {}
+        }, md).use { digestOut ->
             input.copyTo(digestOut)
         }
     }
