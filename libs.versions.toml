@@ -3,7 +3,7 @@ spring-boot = "3.3.5"
 
 [libraries]
 # platform implementation
-spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", enforcedPlatform = true }
 
 # implementation
 apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
@@ -13,7 +13,7 @@ slf4j-jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j" }
 one-util-streamex = { module = "one.util:streamex", version = "0.8.3" }
 
 # platform testImplementation
-junit-bom = { module = "org.junit:junit-bom", version = "5.9.1" }
+junit-bom = { module = "org.junit:junit-bom", version = "5.9.1", enforcedPlatform = true, testImplementation = true }
 
 # testImplementation
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", testImplementation = true }

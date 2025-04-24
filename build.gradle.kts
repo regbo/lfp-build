@@ -35,7 +35,10 @@ gradlePlugin {
 }
 
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-
+println(versionCatalog.libraryAliases.associateWith { alias ->
+    val dep = versionCatalog.findLibrary(alias).get().get()
+    "${dep.module}:${dep.version ?: ""}"
+})
 buildConfig {
     packageName(pluginImplementationClassName.get().substringBeforeLast("."))
     className(pluginName.get() + "Properties")
@@ -53,6 +56,13 @@ buildConfig {
         val dep = versionCatalog.findLibrary(alias).get().get()
         "${dep.module}:${dep.version ?: ""}"
     })
+    listOf("versionCatalogEnforcedPlatformAliases", "versionCatalogTestImplementationAliases").forEach{name->
+        @Suppress("UNCHECKED_CAST")
+        buildConfigField(
+            name,
+            project.extra[name] as Set<String>
+        )
+    }
 }
 
 tasks.test {

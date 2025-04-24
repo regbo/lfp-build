@@ -3,6 +3,7 @@ package com.lfp
 import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.Logging
 import org.gradle.internal.extensions.core.extra
@@ -54,7 +55,6 @@ class BuildPlugin : Plugin<Settings> {
     }
 
 
-    @Suppress("ObjectLiteralToLambda")
     private fun include(settings: Settings, projectDir: Path): Boolean {
         val projectDirFile = projectDir.toFile().canonicalFile
         val projectDirRelativePath = projectDirFile.relativeTo(settings.rootDir.canonicalFile).path
@@ -70,6 +70,7 @@ class BuildPlugin : Plugin<Settings> {
         val projectDescriptor = settings.project(projectPath)
         projectDescriptor.name = projectName
         projectDescriptor.projectDir = projectDirFile
+        @Suppress("ObjectLiteralToLambda")
         settings.gradle.beforeProject(object : Action<Project> {
             override fun execute(project: Project) {
                 if (project.projectDir == projectDirFile) {
@@ -93,27 +94,14 @@ class BuildPlugin : Plugin<Settings> {
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
-        Library.fromProps().forEach { library ->
-            project.logger.lifecycle("adding library - $library")
-            val notation = library.version?.let { "${library.module}:${library.version}" } ?: library.module
-            val dependencyNotation: Any = if (library.enforcedPlatform) {
-                project.dependencies.enforcedPlatform(notation)
-            } else {
-                notation
+        @Suppress("ObjectLiteralToLambda")
+        project.afterEvaluate(object : Action<Project> {
+            override fun execute(project: Project) {
+                configureProjectAfterEvaluate(project)
             }
-            project.dependencies.add(library.configurationName, dependencyNotation)
-            if (library.version != null) {
-                project.dependencies.constraints {
-                    add(library.configurationName, notation) {
-                        version {
-                            require(library.version)
-                        }
-                    }
-                }
-            }
-
-        }
+        })
     }
+
 
     private fun configureProjectSrcDir(project: Project, packageDirSegments: List<String>) {
         val srcMainDir = project.rootDir.resolve("src/main")
@@ -132,6 +120,35 @@ class BuildPlugin : Plugin<Settings> {
         srcMainLanguageDir.mkdirs()
     }
 
+    private fun configureProjectAfterEvaluate(
+        project: Project
+    ) {
+        val apiConfiguration = project.configurations.findByName("api")
+        val implementationConfiguration = project.configurations.findByName("implementation")
+        val testImplementationConfiguration = project.configurations.findByName("testImplementation")
+        Library.fromProps().forEach { library ->
+            val configurations: List<Configuration?> = if (library.testImplementation) {
+                listOf(testImplementationConfiguration)
+            } else if (library.enforcedPlatform) {
+                listOf(implementationConfiguration, testImplementationConfiguration)
+            } else {
+                listOf(apiConfiguration, implementationConfiguration, testImplementationConfiguration)
+            }
+            for (configuration in configurations) {
+                if (configuration != null) {
+                    project.logger.lifecycle("adding library to ${configuration.name} - $library")
+                    val notation = library.version?.let { "${library.module}:${library.version}" } ?: library.module
+                    val dependencyNotation: Any = if (library.enforcedPlatform) {
+                        project.dependencies.enforcedPlatform(notation)
+                    } else {
+                        notation
+                    }
+                    project.dependencies.add(configuration.name, dependencyNotation)
+                    break
+                }
+            }
+        }
+    }
 
     private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
         var projectNameSegments = projectPathSegments.flatMap {
@@ -167,27 +184,24 @@ class BuildPlugin : Plugin<Settings> {
 }
 
 private data class Library(
-    val configurationName: String,
     val alias: String,
     val module: String,
     val version: String? = null,
-    val enforcedPlatform: Boolean
+    val enforcedPlatform: Boolean,
+    val testImplementation: Boolean
 ) {
     companion object {
         fun fromProps(): List<Library> {
-            val enforcedModules = Utils.split(BuildPluginProperties.enforced_platform_modules).toSet()
-            val testImplementationModules = Utils.split(BuildPluginProperties.test_implementation_modules).toSet()
-
             return BuildPluginProperties.versionCatalogLibraries.map { (alias, fullNotation) ->
                 val parts = fullNotation.split(':').toList()
                 val module = parts.subList(0, parts.size - 1).joinToString(":")
-                val version = parts.lastOrNull()
+                val version = parts.lastOrNull()?.takeIf { it.isNotBlank() && parts.size >= 2 }
                 Library(
-                    configurationName = if (module in testImplementationModules) "testImplementation" else "implementation",
                     alias = alias,
                     module = module,
-                    version = if (version.isNullOrBlank() || parts.size < 3) null else version,
-                    enforcedPlatform = module in enforcedModules
+                    version = version,
+                    enforcedPlatform = alias in BuildPluginProperties.versionCatalogEnforcedPlatformAliases,
+                    testImplementation = alias in BuildPluginProperties.versionCatalogTestImplementationAliases,
                 )
             }
         }
