@@ -30,6 +30,7 @@ object Utils {
         Logging.getLogger(Settings::class.java)
     }
 
+
     val tomlMapper: TomlMapper by lazy {
         val tomlMapper = TomlMapper()
         tomlMapper.registerModules(Jdk8Module(), KotlinModule.Builder().build())
@@ -70,7 +71,7 @@ object Utils {
     }
 
     fun resources(path: String = ""): List<Resource> {
-        val packageNameParts = Utils::class.java.packageName.split(".")
+        val packageNameParts = Utils::class.java.`package`.name.split(".")
         val pathPrefixes = mutableListOf(packageNameParts.joinToString("/"))
         if (packageNameParts.size > 1) {
             pathPrefixes.add(packageNameParts.subList(0, packageNameParts.size - 1).joinToString("/"))
