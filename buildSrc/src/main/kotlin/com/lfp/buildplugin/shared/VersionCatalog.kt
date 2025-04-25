@@ -29,7 +29,7 @@ data class VersionCatalog(
     }
 
     val file: File by lazy {
-        val outFile = File(outputDirectory, "${hash()}/${resource.filename}")
+        val outFile = File(outputDirectory, "${name}/${resource.filename}")
         if (!outFile.exists()) {
             outFile.parentFile.mkdirs()
             Utils.tomlMapper.writeValue(outFile, context.content)
@@ -87,10 +87,6 @@ data class VersionCatalog(
             return VersionCatalog(generatedOutputPath(settings.rootDir), resource)
         }
 
-        fun from(project: Project, resource: Resource): VersionCatalog {
-            return VersionCatalog(generatedOutputPath(project.rootDir), resource)
-        }
-
         private fun generatedOutputPath(rootDir: File): File {
             return File(rootDir, GENERATED_OUTPUT_PATH)
         }
@@ -101,6 +97,4 @@ data class VersionCatalog(
 
 private data class Context(
     val hash: String, val content: JsonNode, val autoConfigOptions: Map<String, LibraryAutoConfigOptions>
-) {
-
-}
+)

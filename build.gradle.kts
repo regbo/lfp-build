@@ -56,13 +56,10 @@ libs.libraryAliases.forEach { alias ->
 }
 
 
-
 // === Compute the plugin ID from gradle.properties values ===
 val pluginId = providers.provider {
-    listOf("repository_group", "repository_owner", "repository_name")
-        .map { providers.gradleProperty(it).getOrElse("") }
-        .filter { it.isNotEmpty() }
-        .joinToString(".")
+    listOf("repository_group", "repository_owner", "repository_name").map { providers.gradleProperty(it).getOrElse("") }
+        .filter { it.isNotEmpty() }.joinToString(".")
 }
 
 // === Resolve the plugin implementation class and extract the plugin name ===
@@ -96,7 +93,10 @@ buildConfig {
             }
         }
     }
-
+    buildConfigField(
+        "plugin_package_name", providers
+            .gradleProperty("plugin_implementation_class_name")
+            .map { it.substringBeforeLast(".") })
 }
 
 

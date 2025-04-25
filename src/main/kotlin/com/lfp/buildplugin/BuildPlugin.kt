@@ -54,10 +54,9 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     private fun configureVersionCatalogs(settings: Settings) {
-        val resourcePatternResolver = PathMatchingResourcePatternResolver()
         val pattern =
-            "classpath*:${this::class.java.`package`.name.replace('.', '/')}/*.libs.versions.toml"
-        val resources = resourcePatternResolver.getResources(pattern)
+            "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/default.libs.versions.toml"
+        val resources = Utils.resources(pattern)
         var found = false
         for (resource in resources) {
             val resourceVersionCatalog = VersionCatalog.from(settings, resource)

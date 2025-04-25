@@ -19,6 +19,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             if (enforcedPlatform) project.dependencies.enforcedPlatform(notation) else notation
         for (configuration in configurations) {
             project.dependencies.add(configuration.name, dependencyNotation)
+            Utils.logger.lifecycle("dependency added - configuration:${configuration.name} dependencyNotation:${dependencyNotation} autoConfigOptions:${this}")
         }
         return true
     }
