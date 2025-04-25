@@ -1,17 +1,20 @@
 package com.lfp.buildplugin.shared
 
+import org.gradle.api.Project
+import org.gradle.api.initialization.Settings
+import org.gradle.api.plugins.ExtensionContainer
+
 open class LibraryAutoConfig {
     var enabled = true
     var strictConfigurations = false
     var configurations: List<String>? = null
 
-    override fun toString(): String {
-        return Utils.toString(this)
+    fun createExtension(extensions: ExtensionContainer): LibraryAutoConfig {
+        return extensions.create("libraryAutoConfig", LibraryAutoConfig::class.java)
     }
 
-
-    companion object {
-        const val EXTENSION_NAME: String = "libraryAutoConfig"
+    override fun toString(): String {
+        return Utils.toString(this)
     }
 
 

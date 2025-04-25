@@ -129,10 +129,10 @@ object Utils {
     }
 
     fun toRegex(input: String): Regex {
-        if (input.length > 2 && Stream.of(0, input.length - 1).allMatch { input[it] == '/' }) {
-            return input.substring(1, input.length - 1).toRegex()
+        return if (input.length > 2 && Stream.of(0, input.length - 1).allMatch { input[it] == '/' }) {
+            input.substring(1, input.length - 1).toRegex()
         } else {
-            return Regex("^" + Pattern.quote(input) + "$")
+            Regex("^" + Pattern.quote(input) + "$")
         }
     }
 
