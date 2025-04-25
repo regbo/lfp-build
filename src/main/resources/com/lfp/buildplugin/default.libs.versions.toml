@@ -3,7 +3,7 @@ spring-boot = "3.3.5"
 
 [libraries]
 # annotations
-lombok = { module = "org.projectlombok:lombok", version = "1.18.38", autoConfigOptions = { configurations = ["annotationProcessor", "testAnnotationProcessor", "compileOnly"] } }
+lombok = { module = "org.projectlombok:lombok", version = "1.18.32", autoConfigOptions = { configurations = ["annotationProcessor", "testAnnotationProcessor", "compileOnly"] } }
 # platform implementation
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", autoConfigOptions = { enforcedPlatform = true } }
 # implementation
