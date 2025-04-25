@@ -90,24 +90,5 @@ class UtilsTest {
         assertEquals(emptyList<String>(), Utils.split("  "))
     }
 
-    @Test
-    fun `read resource tomls`() {
-        val resourcePatternResolver = PathMatchingResourcePatternResolver()
-        val pattern =
-            "classpath*:**/*.libs.versions.toml"
-        val resources = resourcePatternResolver.getResources(pattern)
-        val resourceFiles = resources.map { Utils.toFile(File("build"), it) }
-        assertFalse(resourceFiles.isEmpty())
-    }
-
-    @Test
-    fun `read resource tomls forceCopy`() {
-        val resourcePatternResolver = PathMatchingResourcePatternResolver()
-        val pattern =
-            "classpath*:**/*.libs.versions.toml"
-        val resources = resourcePatternResolver.getResources(pattern)
-        val resourceFiles = resources.map { Utils.toFile(File("build"), it, forceCopy = true) }
-        assertFalse(resourceFiles.isEmpty())
-    }
 }
 

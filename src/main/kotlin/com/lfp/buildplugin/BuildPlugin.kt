@@ -1,12 +1,15 @@
 package com.lfp.buildplugin
 
+import com.lfp.buildplugin.shared.LibraryAutoConfig
 import com.lfp.buildplugin.shared.Utils
+import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
 import org.gradle.internal.extensions.core.extra
+import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.getByType
 import org.springframework.core.io.Resource
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
@@ -26,11 +29,6 @@ import kotlin.reflect.full.memberProperties
  */
 class BuildPlugin : Plugin<Settings> {
 
-    private val buildConfigProperties: Map<String, Any?> by lazy {
-        BuildPluginBuildConfig::class.memberProperties.associate { prop ->
-            prop.name to prop.get(BuildPluginBuildConfig)
-        }
-    }
 
     /**
      * Entry point: Applies the plugin to the [Settings] object.
@@ -60,75 +58,17 @@ class BuildPlugin : Plugin<Settings> {
         val pattern =
             "classpath*:${this::class.java.`package`.name.replace('.', '/')}/*.libs.versions.toml"
         val resources = resourcePatternResolver.getResources(pattern)
-
-        val filenamePattern = Pattern.compile("^(\\w+?)(Platform)?\\.")
         var found = false
         for (resource in resources) {
-            val filename = resource.filename ?: continue
-            val matcher = filenamePattern.matcher(filename)
-            if (matcher.find()) {
-                val configurationName = matcher.group(1)
-                val platformGroup = matcher.group(2)
-                val platform = platformGroup != null && platformGroup.isNotEmpty()
-                configureVersionCatalog(settings, resource, configurationName, platform)
-                found = true
-            }
+            val resourceVersionCatalog = VersionCatalog.from(settings, resource)
+            resourceVersionCatalog.apply(settings)
+            found = true
         }
         if (!found) {
             Utils.logger.lifecycle("version catalogs not found")
         }
     }
 
-    private fun configureVersionCatalog(
-        settings: Settings,
-        versionCatalogResource: Resource,
-        configurationName: String,
-        platform: Boolean
-    ) {
-        val versionCatalogFile = Utils.toFile(settings, versionCatalogResource);
-        val versionCatalogFilePath = versionCatalogFile.canonicalFile.absolutePath
-        val versionCatalogFilePathHash =
-            DigestUtils.md5DigestAsHex(versionCatalogFilePath.toByteArray())
-        val versionCatalogName = "$configurationName${if (platform) "Platform" else ""}$versionCatalogFilePathHash"
-        settings.dependencyResolutionManagement.versionCatalogs.create(versionCatalogName) {
-            from(Utils.fileCollection(settings, versionCatalogFile))
-        }
-        val configurationNames = mutableListOf("testImplementation")
-        if ("api" == configurationName) {
-            configurationNames.add(0, "implementation")
-        }
-        if (!configurationNames.contains(configurationName)) configurationNames.add(0, configurationName)
-        settings.gradle.afterProject(Utils.action { project ->
-            val added = configurationNames
-                .mapNotNull { project.configurations.findByName(it) }
-                .any { configuration ->
-                    val libs = project.extensions.getByType<VersionCatalogsExtension>()
-                        .named(versionCatalogName)
-                    val libraryAliases = libs.libraryAliases
-                    if (libraryAliases.isNotEmpty()) {
-                        libraryAliases.forEach { alias ->
-                            val dep = libs.findLibrary(alias).get().get()
-                            val notation = notation(dep)
-                            val dependencyNotation: Any =
-                                if (platform) project.dependencies.enforcedPlatform(notation) else notation
-                            project.dependencies.add(configuration.name, dependencyNotation)
-                        }
-                        project.logger.lifecycle("added version catalog - $versionCatalogFilePath")
-                        true
-                    } else {
-                        false
-                    }
-                }
-            if (!added) {
-                project.logger.lifecycle("skipping version catalog - $versionCatalogFilePath")
-            }
-        })
-    }
-
-    private fun notation(dep: MinimalExternalModuleDependency): Any {
-        var version = dep.versionConstraint.requiredVersion
-        return "${dep.module}:$version"
-    }
 
     /**
      * Returns true if the given directory appears to contain a Gradle module.
@@ -193,7 +133,6 @@ class BuildPlugin : Plugin<Settings> {
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
-        LombokPlugin().apply(project)
     }
 
     /**

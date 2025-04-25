@@ -1,0 +1,18 @@
+[versions]
+spring-boot = "3.3.5"
+
+[libraries]
+# annotations
+lombok = { module = "org.projectlombok:lombok", version = "1.18.38", autoConfigOptions = { configurations = ["annotationProcessor", "testAnnotationProcessor", "compileOnly"] } }
+# platform implementation
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", autoConfigOptions = { enforcedPlatform = true } }
+# implementation
+apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
+logback-classic = { module = 'ch.qos.logback:logback-classic' }
+apache-logging-log4j-to-slf4j = { module = "org.apache.logging.log4j:log4j-to-slf4j" }
+slf4j-jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j" }
+one-util-streamex = { module = "one.util:streamex", version = "0.8.3" }
+# platform testImplementation
+junit-bom = { module = "org.junit:junit-bom", version = "5.9.1", autoConfigOptions = { enforcedPlatform = true } }
+# testImplementation
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", autoConfigOptions = { configurations = ["testImplementation"] } }

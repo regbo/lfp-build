@@ -1,0 +1,106 @@
+package com.lfp.buildplugin.shared
+
+import com.fasterxml.jackson.databind.JsonNode
+import org.apache.commons.codec.binary.Hex
+import org.gradle.api.Project
+import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.initialization.Settings
+import org.gradle.kotlin.dsl.getByType
+import org.springframework.core.io.Resource
+import java.io.File
+import java.security.DigestInputStream
+import java.security.MessageDigest
+import java.util.stream.IntStream
+
+data class VersionCatalog(
+    val outputDirectory: File, val resource: Resource
+) {
+
+    private val context: Context by lazy {
+        resource.inputStream.use { input ->
+            val md = MessageDigest.getInstance("MD5")
+            val content = DigestInputStream(input, md).use { digestInput ->
+                Utils.tomlMapper.readTree(digestInput)
+            }
+            val hash = Hex.encodeHexString(md.digest())
+            val autoConfigOptions = LibraryAutoConfigOptions.read(content, remove = true)
+            Context(hash, content, autoConfigOptions)
+        }
+    }
+
+    val file: File by lazy {
+        val outFile = File(outputDirectory, "${hash()}/${resource.filename}")
+        if (!outFile.exists()) {
+            outFile.parentFile.mkdirs()
+            Utils.tomlMapper.writeValue(outFile, context.content)
+        }
+        outFile
+    }
+
+    val name: String by lazy {
+        val nameParts = Utils.split(resource.filename, nonAlphaNumeric = true, camelCase = true).toMutableList()
+        if (nameParts.size > 1) {
+            IntStream.range(1, nameParts.size)
+                .forEach { index ->
+                    nameParts[index] = nameParts[index].replaceFirstChar { it.uppercase() }
+                }
+        }
+        nameParts.add(hash())
+        nameParts.joinToString("")
+    }
+
+
+    fun hash(): String {
+        return context.hash
+    }
+
+
+    fun autoConfigOptions(): Map<String, LibraryAutoConfigOptions> {
+        return context.autoConfigOptions
+    }
+
+
+    fun apply(settings: Settings) {
+        settings.dependencyResolutionManagement.versionCatalogs.create(name) {
+            from(Utils.fileCollection(settings, file))
+        }
+        settings.gradle.afterProject(Utils.action { project ->
+            val libs = project.extensions.getByType<VersionCatalogsExtension>().named(name)
+            apply(project, libs)
+        })
+    }
+
+    fun apply(project: Project, libs: org.gradle.api.artifacts.VersionCatalog) {
+        libs.libraryAliases.forEach { alias ->
+            val autoConfigOptions = autoConfigOptions()[alias] ?: LibraryAutoConfigOptions();
+            val dep = libs.findLibrary(alias).get().get()
+            autoConfigOptions.add(project, dep)
+        }
+    }
+
+
+    companion object {
+
+        private const val GENERATED_OUTPUT_PATH = "build/generated/version-catalog"
+
+        fun from(settings: Settings, resource: Resource): VersionCatalog {
+            return VersionCatalog(generatedOutputPath(settings.rootDir), resource)
+        }
+
+        fun from(project: Project, resource: Resource): VersionCatalog {
+            return VersionCatalog(generatedOutputPath(project.rootDir), resource)
+        }
+
+        private fun generatedOutputPath(rootDir: File): File {
+            return File(rootDir, GENERATED_OUTPUT_PATH)
+        }
+
+    }
+
+}
+
+private data class Context(
+    val hash: String, val content: JsonNode, val autoConfigOptions: Map<String, LibraryAutoConfigOptions>
+) {
+
+}

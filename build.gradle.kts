@@ -1,4 +1,6 @@
+import com.lfp.buildplugin.shared.LibraryAutoConfigOptions
 import com.lfp.buildplugin.shared.Utils
+import com.lfp.buildplugin.shared.VersionCatalog
 
 
 // === Repositories used for resolving plugins and dependencies ===
@@ -15,6 +17,22 @@ plugins {
     `maven-publish`                   // Adds support for publishing to Maven repositories
     alias(libs.plugins.buildconfig)
 }
+
+// === Configure Java toolchain based on a Gradle property (java_version) ===
+val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
+
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(javaVersion.get()))
+    }
+}
+
+kotlin {
+    jvmToolchain(javaVersion.get()) // Applies the same JVM target to Kotlin compilation
+}
+
+
 
 kotlin {
     sourceSets {
@@ -34,29 +52,10 @@ dependencies {
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 libs.libraryAliases.forEach { alias ->
     val dep = libs.findLibrary(alias).get().get()
-    val dependencyNotation = "${dep.module}:${dep.versionConstraint.requiredVersion}"
-    println(dependencyNotation)
-    dependencies.add("implementation", dependencyNotation)
-}
-
-// === Configure Java toolchain based on a Gradle property (java_version) ===
-val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
-
-//com.lfp.buildplugin.util.Utils.sayHi()
-Utils.sayHi()
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(javaVersion.get()))
-    }
-}
-
-kotlin {
-    jvmToolchain(javaVersion.get()) // Applies the same JVM target to Kotlin compilation
+    LibraryAutoConfigOptions().add(project, dep)
 }
 
 
-sourceSets["main"].kotlin.srcDir(file("buildSrc/src/main"))
 
 // === Compute the plugin ID from gradle.properties values ===
 val pluginId = providers.provider {
