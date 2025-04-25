@@ -50,9 +50,6 @@ object Utils {
         PathMatchingResourcePatternResolver()
     }
 
-    fun sayHi() {
-        println("hi there")
-    }
 
     /**
      * Splits a string using optional options:

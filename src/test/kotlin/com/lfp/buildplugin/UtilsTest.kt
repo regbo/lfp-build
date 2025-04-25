@@ -10,11 +10,6 @@ import java.util.regex.Pattern
 class UtilsTest {
 
     @Test
-    fun `say hi`() {
-        Utils.sayHi()
-    }
-
-    @Test
     fun `split path`() {
         val file = File("test")
         val subFile = File(arrayOf("test", "sub", "dirName", "file-name").joinToString(File.separator))
