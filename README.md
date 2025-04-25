@@ -1,20 +1,21 @@
 # LFP Build Plugin
 
-The **LFP Build Plugin** is a lightweight Gradle plugin designed to streamline multi-module project setups. It automatically discovers subprojects, creates package-aligned source directory structures, and injects dependencies from a version catalog based on optional flags like `enforcedPlatform` and `testImplementation`.
+The LFP Build Plugin is a lightweight Gradle plugin designed to streamline multi-module project setups. It automatically discovers subprojects, creates package-aligned source directory structures, and injects dependencies from a version catalog using configuration options like `enforcedPlatform` or scoped `configurations`.
 
 ## Features
 
 - Automatically includes subprojects by scanning the root directory for `build.gradle` or `build.gradle.kts` files.
 - Generates `src/main/java` or `src/main/kotlin` directories based on your project's group and name.
-- Injects libraries from a version catalog into `api`, `implementation`, and `testImplementation` configurations.
-- Supports `enforcedPlatform` and `testImplementation` flags for version catalog libraries.
+- Injects libraries from a version catalog into Gradle configurations like `api`, `implementation`, `testImplementation`, `annotationProcessor`, etc.
+- Uses `autoConfigOptions` metadata in `libs.versions.toml` to determine how each dependency should be applied.
 - Infers plugin ID from Gradle properties: `repository_group`, `repository_owner`, and `repository_name`.
+- Generates a `BuildConfig` class containing Gradle properties and metadata.
 
 ## Usage with JitPack
 
 This plugin can be consumed directly using JitPack.
 
-### Add JitPack to your pluginManagement block:
+### Add JitPack to your `pluginManagement` block:
 
 ```kotlin
 pluginManagement {
@@ -37,26 +38,45 @@ Replace `<COMMIT or TAG or BRANCH>` with the Git reference you want to use.
 
 ## Version Catalog Integration
 
-The plugin expects a version catalog file named `libs.versions.toml` at the root. It parses the file, removes `enforcedPlatform` and `testImplementation` flags, and rewrites the file with a content hash to avoid redundant writes. The parsed flags are stored in `project.extra` and used to configure dependencies appropriately.
+The plugin expects a version catalog file named `libs.versions.toml` at the root. It parses the file and rewrites it with `autoConfigOptions` metadata removed, writing the cleaned version to a hashed output location. Parsed configuration instructions are then used to apply dependencies to the appropriate configurations.
 
 ### Defining Libraries in `libs.versions.toml`
 
-You can define your libraries using the TOML format. Example:
+Libraries can be annotated with `autoConfigOptions` to control how they're added to the project.
+
+Example:
 
 ```toml
 [versions]
-junit = "5.9.1"
-logback = "1.4.11"
-commons-lang3 = "3.12.0"
+spring-boot = "3.3.5"
 
 [libraries]
-junit-bom = { module = "org.junit:junit-bom", version.ref = "junit", enforcedPlatform = true, testImplementation = true }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", testImplementation = true }
-logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
-apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+# annotations
+lombok = { module = "org.projectlombok:lombok", version = "1.18.32", autoConfigOptions = { configurations = ["annotationProcessor", "compileOnly", "testAnnotationProcessor", "testCompileOnly"] } }
+
+# platform implementation
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", autoConfigOptions = { enforcedPlatform = true } }
+
+# implementation
+apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
+logback-classic = { module = "ch.qos.logback:logback-classic" }
+apache-logging-log4j-to-slf4j = { module = "org.apache.logging.log4j:log4j-to-slf4j" }
+slf4j-jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j" }
+one-util-streamex = { module = "one.util:streamex", version = "0.8.3" }
+
+# platform testImplementation
+junit-bom = { module = "org.junit:junit-bom", version = "5.9.1", autoConfigOptions = { enforcedPlatform = true } }
+
+# testImplementation
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", autoConfigOptions = { configurations = ["testImplementation"] } }
 ```
 
-- `enforcedPlatform = true` will apply the dependency via `enforcedPlatform(...)`.
-- `testImplementation = true` will scope the dependency only for test use.
+### Configuration Behavior
 
-All remaining libraries will be added to `api`, `implementation`, and `testImplementation` unless otherwise specified.
+- `enforcedPlatform = true` causes the dependency to be applied using `enforcedPlatform(...)`.
+- `configurations = [...]` controls which configurations the dependency is added to. If not specified:
+    - `api` is used by default
+    - If `enforcedPlatform = true`, `implementation` is used
+- If `strictConfigurations = true` is also present, no fallbacks will be used.
+
+This allows fine-grained control over how each version catalog entry is applied to your project.

@@ -1,19 +1,11 @@
 package com.lfp.buildplugin
 
-import com.lfp.buildplugin.shared.LibraryAutoConfig
 import com.lfp.buildplugin.shared.Utils
 import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.artifacts.MinimalExternalModuleDependency
-import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
 import org.gradle.internal.extensions.core.extra
-import org.gradle.kotlin.dsl.create
-import org.gradle.kotlin.dsl.getByType
-import org.springframework.core.io.Resource
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver
-import org.springframework.util.DigestUtils
 import java.io.File
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -21,7 +13,6 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
-import kotlin.reflect.full.memberProperties
 
 /**
  * A Gradle plugin that dynamically discovers subprojects and configures them
