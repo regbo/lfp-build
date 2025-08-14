@@ -7,6 +7,7 @@ import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.internal.extensions.core.extra
+import org.gradle.language.jvm.tasks.ProcessResources
 import java.io.File
 import java.nio.file.FileVisitResult
 import java.nio.file.Files
@@ -149,6 +150,7 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
+        configureProjectLogbackXml(project, packageDirSegments)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
@@ -163,7 +165,7 @@ class BuildPlugin : Plugin<Settings> {
      * @param project The Gradle [Project] to configure
      */
     private fun afterProjectEvaluated(project: Project) {
-        configureProjectLogbackXml(project)
+
     }
 
     /**
@@ -175,33 +177,36 @@ class BuildPlugin : Plugin<Settings> {
      *
      * @param project The Gradle [Project] to configure
      */
-    private fun configureProjectLogbackXml(project: Project) {
-        val resourcesDir = project.extensions
-            .findByType(SourceSetContainer::class.java)
-            ?.findByName("main")
-            ?.output
-            ?.resourcesDir
-        if (resourcesDir != null) {
-            val logbackXml = File(resourcesDir, "logback.xml")
-            if (!logbackXml.exists()) {
-                logbackXml.parentFile.mkdirs()
-                //language=xml
-                val logbackXmlContent = """
-                <configuration>
-                    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-                        <encoder>
-                            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-                        </encoder>
-                    </appender>
-                    <root level="INFO">
-                        <appender-ref ref="STDOUT"/>
-                    </root>
-                </configuration>
-            """.trimIndent()
-                logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
-                Utils.logger.debug("logback configuration created - {}", logbackXml.absolutePath)
+    private fun configureProjectLogbackXml(project: Project, packageDirSegments: List<String>) {
+        project.tasks.configureEach(Utils.action { task ->
+            if ("processResources" == task.name && task is ProcessResources) {
+                val generatedResourcesDirPath = "generated/resources/" + packageDirSegments.joinToString("/")
+                val generatedResourcesDir =
+                    project.layout.buildDirectory.dir(generatedResourcesDirPath).map { it.asFile }.get()
+                val logbackXml = File(generatedResourcesDir, "logback.xml")
+                if (logbackXml.exists()) {
+                    Utils.logger.debug("logback configuration exists - {}", logbackXml.absolutePath)
+                } else {
+                    logbackXml.parentFile.mkdirs()
+                    //language=xml
+                    val logbackXmlContent = """
+                    <configuration>
+                        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                            <encoder>
+                                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                            </encoder>
+                        </appender>
+                        <root level="INFO">
+                            <appender-ref ref="STDOUT"/>
+                        </root>
+                    </configuration>
+                    """.trimIndent()
+                    logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
+                    task.from(generatedResourcesDir)
+                    Utils.logger.debug("logback configuration created - {}", logbackXml.absolutePath)
+                }
             }
-        }
+        })
     }
 
 
