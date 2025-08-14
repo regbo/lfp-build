@@ -1,9 +1,8 @@
 package com.lfp.buildplugin
 
 import com.lfp.buildplugin.shared.Utils
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import java.io.File
 import java.util.regex.Pattern
 

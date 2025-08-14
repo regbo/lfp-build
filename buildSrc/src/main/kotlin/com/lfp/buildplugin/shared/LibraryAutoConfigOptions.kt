@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
+import java.util.Collections
 
 /**
  * Extended [LibraryAutoConfig] that adds per-library configuration behavior,
@@ -63,7 +64,6 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
 
         val configurations = mutableSetOf<Configuration>()
         val checkedConfigurationNames = mutableSetOf<String>()
-
         for (i in configurationNames.indices) {
             var configurationName: String? = configurationNames[i]
             while (configurationName != null) {
@@ -85,8 +85,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
                 }
             }
         }
-
-        return configurations.toSet()
+        return Collections.unmodifiableSet(configurations)
     }
 
     companion object {
@@ -98,17 +97,6 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             "implementation" to "testImplementation"
         )
 
-        /**
-         * Converts a [LibraryAutoConfig] into a [LibraryAutoConfigOptions].
-         */
-        fun from(config: LibraryAutoConfig): LibraryAutoConfigOptions {
-            if (config is LibraryAutoConfigOptions) return config
-            return LibraryAutoConfigOptions().also { configOptions ->
-                configOptions.enabled = config.enabled
-                configOptions.strictConfigurations = config.strictConfigurations
-                config.configurations?.let { configOptions.configurations = it }
-            }
-        }
 
         /**
          * Reads `autoConfigOptions` entries from a TOML-based version catalog [JsonNode].

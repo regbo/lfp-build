@@ -2,6 +2,7 @@ package com.lfp.buildplugin.shared
 
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.commons.codec.binary.Hex
+import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
@@ -29,7 +30,7 @@ import java.util.stream.IntStream
 data class VersionCatalog(
     val outputDirectory: File,
     val resource: Resource
-) {
+) : Action<Settings> {
     /**
      * Internal parsed representation of the catalog, computed lazily:
      *  - MD5 hash of file contents
@@ -88,7 +89,7 @@ data class VersionCatalog(
      *
      * @param settings The Gradle [Settings] to apply the catalog to
      */
-    fun apply(settings: Settings) {
+    override fun execute(settings: Settings) {
         settings.dependencyResolutionManagement.versionCatalogs.create(name) {
             from(Utils.fileCollection(settings, file))
         }

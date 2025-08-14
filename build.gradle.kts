@@ -1,4 +1,6 @@
 import com.lfp.buildplugin.shared.LibraryAutoConfigOptions
+import javaslang.collection.Map
+import java.util.stream.Stream
 
 // === Repository configuration for resolving plugins and dependencies ===
 repositories {
@@ -47,15 +49,14 @@ libs.libraryAliases.forEach { alias ->
 
 // === Plugin metadata construction ===
 val pluginId = providers.provider {
-    listOf("repository_group", "repository_owner", "repository_name")
-        .map { providers.gradleProperty(it).getOrElse("") }
-        .filter { it.isNotEmpty() }
-        .joinToString(".")
+    listOf("repository_group", "repository_owner", "repository_name").map { providers.gradleProperty(it).getOrElse("") }
+        .filter { it.isNotEmpty() }.joinToString(".")
 }
 
 val pluginImplementationClass = providers.gradleProperty("plugin_implementation_class")
+val pluginPackageName = pluginImplementationClass.map { it.substringBeforeLast(".") }
 val pluginName = pluginImplementationClass.map { it.substringAfterLast('.') }
-group = pluginImplementationClass.get().substringBeforeLast(".")
+group = pluginPackageName
 
 // === Plugin registration ===
 gradlePlugin {
@@ -69,23 +70,38 @@ gradlePlugin {
 
 // === BuildConfig generation ===
 buildConfig {
-    packageName(group as String)
+    packageName(pluginPackageName.get())
     className(pluginName.get() + "BuildConfig")
 
     // Include gradle.properties entries as constants (only valid Java identifiers)
-    properties.keys.forEach { key ->
-        if (key.matches("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$".toRegex())) {
-            when (val value = property(key)) {
-                is Number -> buildConfigField(key, value)
-                is String -> buildConfigField(key, value)
+    properties.keys.map { Pair(it, it.replace(".", "_").trim()) }
+        .filter { pair -> pair.component1() == pair.component2() || !properties.containsKey(pair.component2()) }
+        .filter { pair -> pair.component2().matches(Regex("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$")) }
+        .filter { pair ->
+            // @formatter:off
+            val javaReservedWords = Stream.of(
+                "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",
+                "const", "continue", "default", "do", "double", "else", "enum", "extends", "final",
+                "finally", "float", "for", "goto", "if", "implements", "import", "instanceof", "int",
+                "interface", "long", "native", "new", "package", "private", "protected", "public",
+                "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this",
+                "throw", "throws", "transient", "try", "void", "volatile", "while", "true", "false", "null"
+            )
+            // @formatter:on
+            javaReservedWords.noneMatch { it.equals(pair.component2(), ignoreCase = true) }
+        }.forEach { pair ->
+            when (val value = properties[pair.component1()]) {
+                is Number -> buildConfigField(pair.component2(), value)
+                is String -> buildConfigField(pair.component2(), value)
             }
         }
-    }
 
-    // Include the plugin package name as a constant
+    // Include the plugin name and package name as a constant
     buildConfigField(
-        "plugin_package_name",
-        pluginImplementationClass.map { it.substringBeforeLast(".") }
+        "plugin_package_name", pluginPackageName
+    )
+    buildConfigField(
+        "plugin_name", pluginName
     )
 }
 

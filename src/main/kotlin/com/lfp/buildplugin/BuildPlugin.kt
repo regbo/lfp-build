@@ -5,6 +5,7 @@ import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.internal.extensions.core.extra
 import java.io.File
 import java.nio.file.FileVisitResult
@@ -62,12 +63,12 @@ class BuildPlugin : Plugin<Settings> {
      */
     private fun configureVersionCatalogs(settings: Settings) {
         val pattern =
-            "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/default.libs.versions.toml"
+            "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/xxxxxdefault.libs.versions.toml"
         val resources = Utils.resources(pattern)
         var found = false
         for (resource in resources) {
             val resourceVersionCatalog = VersionCatalog.from(settings, resource)
-            resourceVersionCatalog.apply(settings)
+            resourceVersionCatalog.execute(settings)
             found = true
         }
         if (!found) {
@@ -139,18 +140,55 @@ class BuildPlugin : Plugin<Settings> {
      * initializes its source directory if needed.
      */
     private fun configureProject(
-        project: Project,
-        projectPathSegments: List<String>,
-        projectNameSegments: List<String>
+        project: Project, projectPathSegments: List<String>, projectNameSegments: List<String>
     ) {
         project.extra["projectPathSegments"] = projectPathSegments
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
+        configureProjectLogbackXml(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
     }
+
+    /**
+     * Ensures a default `logback.xml` exists under the build output resources for the `main` source set.
+     *
+     * The method resolves `build/resources/main` from the `main` source set output. If the directory
+     * exists and no `logback.xml` is present, it creates the parent directory if needed and writes a
+     * standard console-only Logback configuration with a sensible pattern at INFO level.
+     *
+     * @param project The Gradle [Project] to configure
+     */
+    private fun configureProjectLogbackXml(project: Project) {
+        val resourcesDir = project.extensions
+            .findByType(SourceSetContainer::class.java)
+            ?.findByName("main")
+            ?.output
+            ?.resourcesDir
+        if (resourcesDir != null) {
+            val logbackXml = File(resourcesDir, "logback.xml")
+            if (!logbackXml.exists()) {
+                logbackXml.parentFile.mkdirs()
+                //language=xml
+                val logbackXmlContent = """
+                <configuration>
+                    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                        <encoder>
+                            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                        </encoder>
+                    </appender>
+                    <root level="INFO">
+                        <appender-ref ref="STDOUT"/>
+                    </root>
+                </configuration>
+            """.trimIndent()
+                logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
+            }
+        }
+    }
+
 
     /**
      * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists
@@ -158,11 +196,8 @@ class BuildPlugin : Plugin<Settings> {
      */
     private fun configureProjectSrcDir(project: Project, packageDirSegments: List<String>) {
         val srcMainDir = project.projectDir.resolve("src/main")
-        val sourceFileExists = srcMainDir
-            .takeIf { it.exists() && it.isDirectory }
-            ?.walkTopDown()
-            ?.any { it.isFile && (it.extension == "kt" || it.extension == "java") }
-            ?: false
+        val sourceFileExists = srcMainDir.takeIf { it.exists() && it.isDirectory }?.walkTopDown()
+            ?.any { it.isFile && (it.extension == "kt" || it.extension == "java") } ?: false
 
         if (sourceFileExists) return
 
@@ -212,4 +247,6 @@ class BuildPlugin : Plugin<Settings> {
             combined.toList()
         }
     }
+
+
 }

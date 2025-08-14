@@ -60,7 +60,7 @@ object Utils {
     val resourcePatternResolver: ResourcePatternResolver by lazy {
         PathMatchingResourcePatternResolver()
     }
-    
+
 
     /**
      * Splits the given string into segments with optional processing:
