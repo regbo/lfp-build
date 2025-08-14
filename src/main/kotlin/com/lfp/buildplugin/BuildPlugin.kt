@@ -45,16 +45,10 @@ class BuildPlugin : Plugin<Settings> {
                 beforeProjectEvaluated(project, emptyList(), Utils.split(project.name))
             }
         })
-
         // Walk the root directory tree to discover and include module projects
-        Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
-            override fun preVisitDirectory(dir: Path?, attrs: BasicFileAttributes): FileVisitResult {
-                if (isModuleProjectDir(settings, dir) && includeProject(settings, dir!!)) {
-                    // Skip recursion into a module once included
-                    return FileVisitResult.SKIP_SUBTREE
-                }
-                return super.preVisitDirectory(dir, attrs)
-            }
+        val buildScanner = BuildScanner(settings.rootDir.toPath())
+        buildScanner.accept(Utils.action { buildFile ->
+            includeProject(settings, buildFile.parent)
         })
     }
 
@@ -97,28 +91,6 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
-    /**
-     * Returns true if the given directory looks like a Gradle module project.
-     *
-     * A valid module:
-     *  - Is not hidden
-     *  - Is not the root directory
-     *  - Is not in excluded directory names (`src`, `build`, `temp`, `tmp`)
-     *  - Contains a `build.gradle` or `build.gradle.kts` file
-     */
-    private fun isModuleProjectDir(settings: Settings, dir: Path?): Boolean {
-        if (dir != null && !Files.isHidden(dir) && settings.rootDir != dir) {
-            val dirName = dir.fileName.toString()
-            if (!dirName.startsWith(".") && dirName !in listOf("src", "build", "temp", "tmp")) {
-                for (suffix in listOf("", ".kts")) {
-                    if (Files.isRegularFile(dir.resolve("build.gradle$suffix"))) {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    }
 
     /**
      * Includes the given directory as a Gradle subproject if valid, and

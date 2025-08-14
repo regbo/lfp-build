@@ -89,11 +89,16 @@ buildConfig {
             // @formatter:on
             javaReservedWords.noneMatch { it.equals(pair.component2(), ignoreCase = true) }
         }.forEach { pair ->
-            when (val value = properties[pair.component1()]) {
-                is Number -> buildConfigField(pair.component2(), value)
-                is String -> buildConfigField(pair.component2(), value)
+            val key = pair.component1()
+            val name = pair.component2()
+            when (val value = properties[key]) {
+                is Number -> buildConfigField(name, value)
+                is String -> buildConfigField(name, value)
+                is File -> buildConfigField(name, value)
+                is java.nio.file.Path -> buildConfigField(name, value.toFile())
             }
         }
+
 
     // Include the plugin name and package name as a constant
     buildConfigField(
