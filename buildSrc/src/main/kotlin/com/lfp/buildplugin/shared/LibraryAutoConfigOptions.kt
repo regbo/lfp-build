@@ -47,22 +47,22 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             }
         }
         for (configuration in configurations) {
+            project.dependencies.apply {
+                add(configuration.name, dependencyNotation)
+            }
             Utils.logger.lifecycle(
-                "configuring dependency - configurationName:{} dependencyNotation:{} autoConfigOptions:{}",
+                "dependency added - configurationName:{} dependencyNotation:{} autoConfigOptions:{}",
                 configuration.name,
                 dependencyNotation,
                 Utils.toString(this, ToStringStyle.NO_CLASS_NAME_STYLE)
             )
-            project.dependencies.apply {
-                add(configuration.name, dependencyNotation)
-            }
         }
         return true
     }
 
     /**
      * Resolves configurations from the project according to configured names and fallbacks.
-     * Honors `enabled`, `strictConfigurations`, and `enforcedPlatform` settings.
+     * Honors `enabled`, `strictConfigurations`, and `platform` settings.
      *
      * @param project The Gradle [Project] to resolve configurations from
      * @return Set of matching configurations
@@ -72,7 +72,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
 
         val configurationNames = configurations ?: when {
             strictConfigurations -> emptyList()
-            platform -> listOf("implementation")
+            platform -> listOf("api", "/^implementation$/", "/.+Implementation.*/", "/^annotation.*$/", "/.+Annotation.*/")
             else -> listOf("api")
         }
 
