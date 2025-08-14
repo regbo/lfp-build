@@ -1,6 +1,7 @@
 package com.lfp.buildplugin
 
 import com.lfp.buildplugin.shared.Utils
+import com.lfp.buildplugin.shared.VersionCatalog
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project

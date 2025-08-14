@@ -1,7 +1,6 @@
-package com.lfp.buildplugin
+package com.lfp.buildplugin.shared
 
 import com.fasterxml.jackson.databind.JsonNode
-import com.lfp.buildplugin.shared.Utils
 import org.apache.commons.codec.binary.Hex
 import org.gradle.api.Action
 import org.gradle.api.Project
