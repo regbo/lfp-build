@@ -42,10 +42,6 @@ class BuildPlugin : Plugin<Settings> {
                 beforeProjectEvaluated(project, emptyList(), Utils.split(project.name))
             }
         })
-        // Configure project after evaluated
-        settings.gradle.afterProject(Utils.action { project ->
-            afterProjectEvaluated(project)
-        })
 
         // Walk the root directory tree to discover and include module projects
         Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
@@ -156,17 +152,6 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
-    /**
-     * Executes post-evaluation configuration tasks for a project.
-     *
-     * This method is invoked after the project has been evaluated and performs
-     * tasks that rely on the presence of the build output directory.
-     *
-     * @param project The Gradle [Project] to configure
-     */
-    private fun afterProjectEvaluated(project: Project) {
-
-    }
 
     /**
      * Ensures a default `logback.xml` exists under the build output resources for the `main` source set.
