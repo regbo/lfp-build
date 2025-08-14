@@ -56,7 +56,7 @@ val pluginId = providers.provider {
 val pluginImplementationClass = providers.gradleProperty("plugin_implementation_class")
 val pluginPackageName = pluginImplementationClass.map { it.substringBeforeLast(".") }
 val pluginName = pluginImplementationClass.map { it.substringAfterLast('.') }
-group = pluginPackageName
+group = pluginPackageName.get()
 
 // === Plugin registration ===
 gradlePlugin {
