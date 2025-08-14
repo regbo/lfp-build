@@ -35,6 +35,7 @@ replay_pid*
 # Gradle
 .gradle/
 build/
+!gradle/wrapper/gradle-wrapper.jar
 
 
 # Local dev-only files or folders
