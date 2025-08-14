@@ -1,11 +1,13 @@
 package com.lfp.buildplugin
 
 import com.lfp.buildplugin.shared.Utils
-import com.lfp.buildplugin.shared.VersionCatalog
+
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.initialization.Settings
 import org.gradle.api.initialization.resolve.RepositoriesMode
+import org.gradle.api.tasks.Copy
 import org.gradle.internal.extensions.core.extra
 import java.io.File
 import java.nio.file.FileVisitResult
@@ -163,12 +165,52 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
-
+        configureProjectLogbackXml(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
     }
 
+
+    /**
+     * Contributes a default logback.xml to processResources with low precedence.
+     *
+     * Precedence rules
+     * - This spec sets DuplicatesStrategy.INCLUDE so later specs that add the same path overwrite it.
+     * - If another plugin also adds logback.xml, the last one configured wins.
+     *
+     * Safety
+     * - No effect if the module already has src/main/resources/logback.xml.
+     */
+    private fun configureProjectLogbackXml(project: Project) {
+        val moduleHasOwn = project.layout.projectDirectory
+            .file("src/main/resources/logback.xml").asFile.exists()
+        if (moduleHasOwn) return
+
+        // language=xml
+        val logbackXmlContent = """
+        <configuration>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder>
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                </encoder>
+            </appender>
+            <root level="INFO">
+                <appender-ref ref="STDOUT"/>
+            </root>
+        </configuration>
+        """.trimIndent()
+
+        val fromProvider = project.resources.text.fromString(logbackXmlContent)
+
+        project.tasks.named("processResources", Copy::class.java) {
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+            from(fromProvider) {
+                rename { "logback.xml" }
+                into("") // root of resources on the runtime classpath
+            }
+        }
+    }
 
     /**
      * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists

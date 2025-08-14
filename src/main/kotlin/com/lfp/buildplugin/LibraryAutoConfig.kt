@@ -1,6 +1,6 @@
-package com.lfp.buildplugin.shared
+package com.lfp.buildplugin
 
-import org.gradle.api.plugins.ExtensionContainer
+import com.lfp.buildplugin.shared.Utils
 
 /**
  * Base configuration for automatically wiring dependencies to Gradle configurations.

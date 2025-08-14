@@ -1,5 +1,4 @@
 import com.lfp.buildplugin.shared.LibraryAutoConfigOptions
-import javaslang.collection.Map
 import java.util.stream.Stream
 
 // === Repository configuration for resolving plugins and dependencies ===

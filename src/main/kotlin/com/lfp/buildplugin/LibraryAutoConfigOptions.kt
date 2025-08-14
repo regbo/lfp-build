@@ -1,7 +1,8 @@
-package com.lfp.buildplugin.shared
+package com.lfp.buildplugin
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.lfp.buildplugin.shared.Utils
 import org.apache.commons.lang3.builder.ToStringStyle
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
