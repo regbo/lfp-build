@@ -7,13 +7,21 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 
 /**
- * Extended version of [LibraryAutoConfig] with per-library behavior such as enforced platform support.
+ * Extended [LibraryAutoConfig] that adds per-library configuration behavior,
+ * such as enforced platform support and the ability to apply dependencies
+ * automatically to appropriate Gradle configurations.
  */
 open class LibraryAutoConfigOptions : LibraryAutoConfig() {
+    /** If true, dependencies will be added as enforced platforms. */
     var enforcedPlatform = false
 
     /**
-     * Adds the given dependency to all resolved configurations.
+     * Adds the given dependency to the resolved configurations for this project,
+     * based on the configured rules and fallbacks.
+     *
+     * @param project    The target Gradle [Project]
+     * @param dependency The dependency to add
+     * @return true if added to at least one configuration, false if no configurations matched
      */
     fun add(project: Project, dependency: MinimalExternalModuleDependency): Boolean {
         val configurations = configurations(project)
@@ -36,7 +44,11 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     }
 
     /**
-     * Resolves the appropriate configurations from the project according to config rules and fallbacks.
+     * Resolves configurations from the project according to configured names and fallbacks.
+     * Honors `enabled`, `strictConfigurations`, and `enforcedPlatform` settings.
+     *
+     * @param project The Gradle [Project] to resolve configurations from
+     * @return Set of matching configurations
      */
     fun configurations(project: Project): Set<Configuration> {
         if (!enabled) return emptySet()
@@ -80,14 +92,14 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     companion object {
         private const val PROPERTY_NAME = "autoConfigOptions"
 
-        // Allows fallback to other configurations when not strict
+        /** Default fallback configuration mapping (used if not strict). */
         private val FALLBACK_CONFIGURATIONS = mapOf(
             "api" to "implementation",
             "implementation" to "testImplementation"
         )
 
         /**
-         * Converts a [LibraryAutoConfig] into [LibraryAutoConfigOptions].
+         * Converts a [LibraryAutoConfig] into a [LibraryAutoConfigOptions].
          */
         fun from(config: LibraryAutoConfig): LibraryAutoConfigOptions {
             if (config is LibraryAutoConfigOptions) return config
@@ -99,8 +111,12 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
         }
 
         /**
-         * Reads `autoConfigOptions` entries from the TOML structure of a version catalog.
-         * Strips them out of the tree if `remove` is true.
+         * Reads `autoConfigOptions` entries from a TOML-based version catalog [JsonNode].
+         * Optionally removes the property from the catalog if [remove] is true.
+         *
+         * @param versionCatalogNode Root node of the parsed TOML catalog
+         * @param remove If true, removes the `autoConfigOptions` property from the node
+         * @return Map of library alias → [LibraryAutoConfigOptions]
          */
         fun read(versionCatalogNode: JsonNode, remove: Boolean = false): Map<String, LibraryAutoConfigOptions> {
             val libraries = versionCatalogNode.at("/libraries")

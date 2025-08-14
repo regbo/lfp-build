@@ -13,13 +13,29 @@ import java.security.MessageDigest
 import java.util.stream.IntStream
 
 /**
- * Wrapper for processing and applying a version catalog resource with auto-config metadata.
+ * Represents a Gradle version catalog backed by a TOML resource, with optional
+ * auto-configuration metadata for applying dependencies automatically.
+ *
+ * This class:
+ *  - Reads and parses the given catalog file once, computing a deterministic hash
+ *  - Strips out and stores any [LibraryAutoConfigOptions] from the catalog content
+ *  - Writes a cleaned copy of the catalog to a generated build output directory
+ *  - Registers the catalog with Gradle's dependency resolution management
+ *  - Applies automatic dependency configuration to projects after evaluation
+ *
+ * @property outputDirectory The directory where the cleaned version catalog will be written
+ * @property resource        The Spring [Resource] representing the original catalog file
  */
 data class VersionCatalog(
     val outputDirectory: File,
     val resource: Resource
 ) {
-    // Lazily parse and digest the catalog once for name, hash, content, and autoConfig metadata
+    /**
+     * Internal parsed representation of the catalog, computed lazily:
+     *  - MD5 hash of file contents
+     *  - Parsed TOML as [JsonNode]
+     *  - Extracted auto-config metadata
+     */
     private val context: Context by lazy {
         resource.inputStream.use { input ->
             val md = MessageDigest.getInstance("MD5")
@@ -32,7 +48,10 @@ data class VersionCatalog(
         }
     }
 
-    // Write a cleaned version of the version catalog file to disk
+    /**
+     * The cleaned catalog file written to [outputDirectory].
+     * Created only once and reused afterwards.
+     */
     val file: File by lazy {
         val outFile = File(outputDirectory, "${name}/${resource.filename}")
         if (!outFile.exists()) {
@@ -42,7 +61,10 @@ data class VersionCatalog(
         outFile
     }
 
-    // Create a deterministic version catalog name based on filename and hash
+    /**
+     * Deterministic catalog name based on the resource filename and content hash.
+     * Camel-cases split filename parts and appends the hash.
+     */
     val name: String by lazy {
         val nameParts = Utils.split(resource.filename, nonAlphaNumeric = true, camelCase = true).toMutableList()
         if (nameParts.size > 1) {
@@ -54,12 +76,17 @@ data class VersionCatalog(
         nameParts.joinToString("")
     }
 
+    /** Returns the MD5 hash of the catalog file contents. */
     fun hash(): String = context.hash
 
+    /** Returns the extracted auto-config metadata keyed by library alias. */
     fun autoConfigOptions(): Map<String, LibraryAutoConfigOptions> = context.autoConfigOptions
 
     /**
-     * Applies this version catalog to the given [Settings] and wires up auto-config after projects are evaluated.
+     * Registers this version catalog with the given [Settings] and
+     * wires up auto-configuration to run after all projects are evaluated.
+     *
+     * @param settings The Gradle [Settings] to apply the catalog to
      */
     fun apply(settings: Settings) {
         settings.dependencyResolutionManagement.versionCatalogs.create(name) {
@@ -72,7 +99,10 @@ data class VersionCatalog(
     }
 
     /**
-     * Applies auto-configuration to dependencies from this catalog inside the given [Project].
+     * Applies auto-configuration to each library alias in the given catalog.
+     *
+     * @param project The Gradle [Project] to configure
+     * @param libs    The [org.gradle.api.artifacts.VersionCatalog] instance
      */
     fun apply(project: Project, libs: org.gradle.api.artifacts.VersionCatalog) {
         libs.libraryAliases.forEach { alias ->
@@ -85,17 +115,28 @@ data class VersionCatalog(
     companion object {
         private const val GENERATED_OUTPUT_PATH = "build/generated/version-catalog"
 
+        /**
+         * Creates a [VersionCatalog] instance from a [Settings] context and [Resource].
+         */
         fun from(settings: Settings, resource: Resource): VersionCatalog {
             return VersionCatalog(generatedOutputPath(settings.rootDir), resource)
         }
 
+        /**
+         * Resolves the generated output path relative to the given root directory.
+         */
         private fun generatedOutputPath(rootDir: File): File {
             return File(rootDir, GENERATED_OUTPUT_PATH)
         }
     }
 }
 
-// Internal class representing the parsed catalog context
+/**
+ * Internal parsed representation of the version catalog:
+ * @property hash             MD5 hash of the original catalog content
+ * @property content          Parsed TOML content as [JsonNode]
+ * @property autoConfigOptions Extracted auto-config options keyed by library alias
+ */
 private data class Context(
     val hash: String,
     val content: JsonNode,

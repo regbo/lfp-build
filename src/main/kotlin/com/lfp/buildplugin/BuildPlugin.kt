@@ -15,28 +15,37 @@ import java.nio.file.attribute.BasicFileAttributes
 import java.util.regex.Pattern
 
 /**
- * A Gradle plugin that dynamically discovers subprojects and configures them
- * based on their directory structure and naming.
+ * Gradle settings plugin that:
+ *  - Dynamically discovers and includes subprojects based on the filesystem structure
+ *  - Configures version catalogs from default resources
+ *  - Initializes basic source directory structure for new projects
+ *  - Adds useful metadata (path/name/package segments) to each project
+ *
+ * Applied to [Settings] rather than [Project], so it operates during the settings
+ * phase to control project inclusion and basic setup.
  */
 class BuildPlugin : Plugin<Settings> {
 
-
     /**
-     * Entry point: Applies the plugin to the [Settings] object.
+     * Entry point for plugin application.
+     * Configures version catalogs, sets up root project metadata,
+     * and walks the file tree to find and include subprojects.
      */
     override fun apply(settings: Settings) {
         configureVersionCatalogs(settings)
-        // Configure the root project
+
+        // Configure root project metadata
         settings.gradle.beforeProject(Utils.action { project ->
             if (project.projectDir == settings.rootDir) {
                 configureProject(project, emptyList(), Utils.split(project.name))
             }
         })
 
-        // Recursively walk the root directory to find valid subprojects
+        // Walk the root directory tree to discover and include module projects
         Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir: Path?, attrs: BasicFileAttributes): FileVisitResult {
                 if (isModuleProjectDir(settings, dir) && include(settings, dir!!)) {
+                    // Skip recursion into a module once included
                     return FileVisitResult.SKIP_SUBTREE
                 }
                 return super.preVisitDirectory(dir, attrs)
@@ -44,6 +53,13 @@ class BuildPlugin : Plugin<Settings> {
         })
     }
 
+    /**
+     * Locates and applies default version catalogs packaged with the plugin.
+     *
+     * Searches the classpath for `default.libs.versions.toml` under the
+     * plugin's package path, applies each one found as a Gradle version catalog,
+     * and wires up its auto-config options.
+     */
     private fun configureVersionCatalogs(settings: Settings) {
         val pattern =
             "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/default.libs.versions.toml"
@@ -59,9 +75,14 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
-
     /**
-     * Returns true if the given directory appears to contain a Gradle module.
+     * Returns true if the given directory looks like a Gradle module project.
+     *
+     * A valid module:
+     *  - Is not hidden
+     *  - Is not the root directory
+     *  - Is not in excluded directory names (`src`, `build`, `temp`, `tmp`)
+     *  - Contains a `build.gradle` or `build.gradle.kts` file
      */
     private fun isModuleProjectDir(settings: Settings, dir: Path?): Boolean {
         if (dir != null && !Files.isHidden(dir) && settings.rootDir != dir) {
@@ -78,7 +99,12 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     /**
-     * Includes a subproject and configures it if it is a valid module directory.
+     * Includes the given directory as a Gradle subproject if valid, and
+     * registers configuration logic for it.
+     *
+     * @param settings The Gradle settings instance
+     * @param projectDir The path to the candidate project directory
+     * @return true if included, false if skipped
      */
     private fun include(settings: Settings, projectDir: Path): Boolean {
         val projectDirFile = projectDir.toFile().canonicalFile
@@ -109,7 +135,8 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     /**
-     * Adds path/name/dir metadata to a project and initializes its source directory if needed.
+     * Stores metadata about the project in its extra properties and
+     * initializes its source directory if needed.
      */
     private fun configureProject(
         project: Project,
@@ -126,7 +153,8 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     /**
-     * Creates the default source directory structure if no source files exist.
+     * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists
+     * for a new project if no source files are present yet.
      */
     private fun configureProjectSrcDir(project: Project, packageDirSegments: List<String>) {
         val srcMainDir = project.projectDir.resolve("src/main")
@@ -148,9 +176,10 @@ class BuildPlugin : Plugin<Settings> {
         srcMainLanguageDir.mkdirs()
     }
 
-
     /**
-     * Derives a clean list of name segments from a project path.
+     * Converts a list of project path segments into clean lowercase name segments,
+     * splitting on non-alphanumeric and CamelCase boundaries, and removing
+     * leading "module" or "modules" if present.
      */
     private fun projectNameSegments(projectPathSegments: List<String>): List<String> {
         var segments = projectPathSegments.flatMap {
@@ -163,7 +192,8 @@ class BuildPlugin : Plugin<Settings> {
     }
 
     /**
-     * Computes the source package directory structure from the group and project name.
+     * Derives the Java/Kotlin package directory segments from the project's group
+     * and name. If group is not set, falls back to the root project's group.
      */
     private fun packageDirSegments(project: Project, nameSegments: List<String>): List<String> {
         var groupSegments = Utils.split(project.group.toString(), nonAlphaNumeric = true)
@@ -183,5 +213,3 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 }
-
-

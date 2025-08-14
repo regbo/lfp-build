@@ -1,20 +1,20 @@
 import com.lfp.buildplugin.shared.LibraryAutoConfigOptions
 
-// === Repositories used for resolving plugins and dependencies ===
+// === Repository configuration for resolving plugins and dependencies ===
 repositories {
-    gradlePluginPortal()
-    mavenCentral()
+    gradlePluginPortal() // Gradle Plugin Portal for community plugins
+    mavenCentral()       // Maven Central for standard dependencies
 }
 
-// === Plugins used for building and publishing this plugin ===
+// === Plugins required for building and publishing this Gradle plugin ===
 plugins {
-    `kotlin-dsl`                      // Enables Kotlin DSL in build scripts
-    `java-gradle-plugin`             // Allows defining and publishing Gradle plugins
-    `maven-publish`                  // Enables publishing artifacts to Maven repositories
-    alias(libs.plugins.buildconfig)  // Adds BuildConfig generation support via plugin alias
+    `kotlin-dsl`                      // Enable Kotlin DSL for build scripts
+    `java-gradle-plugin`              // Allow defining and publishing Gradle plugins
+    `maven-publish`                   // Enable publishing artifacts to Maven repositories
+    alias(libs.plugins.buildconfig)   // BuildConfig generation via catalog plugin alias
 }
 
-// === Configure Java and Kotlin toolchains using a Gradle property ===
+// === Java and Kotlin toolchain configuration ===
 val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
 
 java {
@@ -24,28 +24,29 @@ java {
 }
 
 kotlin {
-    jvmToolchain(javaVersion.get())  // Applies the same JVM version to Kotlin compilation
+    jvmToolchain(javaVersion.get())
     sourceSets {
         getByName("main") {
-            kotlin.srcDir("buildSrc/src/main/kotlin") // Adds an extra Kotlin source directory
+            // Include additional Kotlin sources from buildSrc
+            kotlin.srcDir("buildSrc/src/main/kotlin")
         }
     }
 }
 
-// === Declare test dependencies ===
+// === Test dependencies ===
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
-// === Automatically apply all libraries from the version catalog via custom config ===
+// === Apply all dependencies from the version catalog automatically ===
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 libs.libraryAliases.forEach { alias ->
     val dep = libs.findLibrary(alias).get().get()
     LibraryAutoConfigOptions().add(project, dep)
 }
 
-// === Construct plugin ID from gradle.properties values ===
+// === Plugin metadata construction ===
 val pluginId = providers.provider {
     listOf("repository_group", "repository_owner", "repository_name")
         .map { providers.gradleProperty(it).getOrElse("") }
@@ -53,12 +54,11 @@ val pluginId = providers.provider {
         .joinToString(".")
 }
 
-// === Extract plugin name and group from the implementation class name ===
 val pluginImplementationClass = providers.gradleProperty("plugin_implementation_class")
 val pluginName = pluginImplementationClass.map { it.substringAfterLast('.') }
 group = pluginImplementationClass.get().substringBeforeLast(".")
 
-// === Register the plugin with its ID and implementation class ===
+// === Plugin registration ===
 gradlePlugin {
     plugins {
         register(pluginName.get()) {
@@ -68,12 +68,12 @@ gradlePlugin {
     }
 }
 
-// === Generate a BuildConfig class using all valid Gradle properties ===
+// === BuildConfig generation ===
 buildConfig {
     packageName(group as String)
     className(pluginName.get() + "BuildConfig")
 
-    // Add all valid gradle.properties entries as constants
+    // Include gradle.properties entries as constants (only valid Java identifiers)
     properties.keys.forEach { key ->
         if (key.matches("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$".toRegex())) {
             when (val value = property(key)) {
@@ -83,14 +83,14 @@ buildConfig {
         }
     }
 
-    // Also include the plugin package name
+    // Include the plugin package name as a constant
     buildConfigField(
         "plugin_package_name",
         pluginImplementationClass.map { it.substringBeforeLast(".") }
     )
 }
 
-// === Configure the test task to use JUnit 5 ===
+// === Test task configuration ===
 tasks.test {
     useJUnitPlatform()
 }

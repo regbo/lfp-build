@@ -1,4 +1,4 @@
-@file:Suppress("ObjectLiteralToLambda")
+@file:Suppress("ObjectLiteralToLambda", "JavaDefaultMethodsNotOverriddenByDelegation")
 
 package com.lfp.buildplugin.shared
 
@@ -31,36 +31,50 @@ import java.util.function.Consumer
 import java.util.regex.Pattern
 import java.util.stream.Stream
 
+/**
+ * Utility helper object providing:
+ *  - Logging
+ *  - TOML parsing with Jackson
+ *  - Resource resolution
+ *  - String splitting with CSV, non-alphanumeric, and CamelCase rules
+ *  - Reflection-based string rendering
+ *  - Regex conversion
+ *  - Gradle file collection creation
+ *  - Java/Kotlin interop helpers for Gradle [Action] and Groovy [Closure]
+ */
 object Utils {
 
-    // Lazy logger instance scoped to Settings class for Gradle logging
+    /** Gradle logger scoped to [Settings]. */
     val logger: Logger by lazy {
         Logging.getLogger(Settings::class.java)
     }
 
-    // Configured TomlMapper with Kotlin and JDK8 support
+    /** Preconfigured [TomlMapper] with Kotlin and JDK8 module support. */
     val tomlMapper: TomlMapper by lazy {
-        val tomlMapper = TomlMapper()
-        tomlMapper.registerModules(Jdk8Module(), KotlinModule.Builder().build())
-        tomlMapper
+        TomlMapper().apply {
+            registerModules(Jdk8Module(), KotlinModule.Builder().build())
+        }
     }
 
-    // Spring resource resolver for classpath and file patterns
+    /** Spring resource resolver for classpath and file system patterns. */
     val resourcePatternResolver: ResourcePatternResolver by lazy {
         PathMatchingResourcePatternResolver()
     }
-
-    fun sayHello() {
-        println("hello")
-    }
-
+    
 
     /**
-     * Splits a string using optional options:
-     * - CSV parsing (if commas present)
-     * - Non-alphanumeric splitting
-     * - CamelCase splitting
-     * - Lowercasing
+     * Splits the given string into segments with optional processing:
+     *  - CSV parsing if commas are present
+     *  - Splitting on non-alphanumeric characters
+     *  - Splitting on CamelCase boundaries
+     *  - Lowercasing segments
+     *  - Trimming and filtering blank entries
+     *
+     * @param str Input string
+     * @param nonAlphaNumeric If true, split on any non-alphanumeric character
+     * @param camelCase If true, split on camel-case boundaries
+     * @param lowercase If true, convert segments to lowercase
+     * @return List of processed, trimmed segments
      */
     fun split(
         str: String?, nonAlphaNumeric: Boolean = false, camelCase: Boolean = false, lowercase: Boolean = false
@@ -93,15 +107,20 @@ object Utils {
     }
 
     /**
-     * Resolves any input into a list of readable [Resource]s.
-     * Supports files, paths, resource patterns, and directories (optionally walking them).
+     * Resolves arbitrary inputs (paths, files, patterns, resources) into readable [Resource] instances.
+     * Supports:
+     *  - Direct files and paths
+     *  - Resource patterns (classpath, filesystem)
+     *  - Directories (optional recursive walking)
+     *
+     * @param locations Locations to resolve
+     * @param walkDirectories If true, recurse into directories
      */
     fun resources(vararg locations: Any?, walkDirectories: Boolean = true): List<Resource> {
 
-        // Converts a Path to a Resource if it exists
-        fun pathToResource(input: Path?): Resource? = input?.takeIf(Files::exists)?.let(::PathResource)
+        fun pathToResource(input: Path?): Resource? =
+            input?.takeIf(Files::exists)?.let(::PathResource)
 
-        // Converts a string to a list of resources via file path or pattern
         fun stringToResources(input: String?): List<Resource> {
             val inputTrimmed = input?.trim()?.takeIf(String::isNotBlank) ?: return emptyList()
             val resources = mutableListOf<Resource?>()
@@ -116,10 +135,9 @@ object Utils {
             } catch (_: Exception) {
             }
 
-            return resources.filterNotNull().distinct().toList()
+            return resources.filterNotNull().distinct()
         }
 
-        // Normalizes any input to a list of resources
         fun anyToResources(input: Any?): List<Resource> = when (input) {
             null -> emptyList()
             is Resource -> listOf(input)
@@ -128,10 +146,8 @@ object Utils {
             else -> stringToResources(input.toString())
         }
 
-        // Flatten all input locations into a list of readable resources
         var resources = locations.flatMap(::anyToResources)
 
-        // Optionally walk into directories
         if (walkDirectories) {
             fun walkDirectoryResources(resource: Resource): List<Resource> {
                 if (resource.isFile) {
@@ -146,7 +162,6 @@ object Utils {
                 }
                 return listOf(resource)
             }
-
             resources = resources.flatMap(::walkDirectoryResources)
         }
 
@@ -154,7 +169,8 @@ object Utils {
     }
 
     /**
-     * Returns a simple string representation of an object using Apache Commons `ToStringBuilder`.
+     * Renders an object into a short string form using reflection-based
+     * [ToStringBuilder] with [ToStringStyle.SHORT_PREFIX_STYLE].
      */
     fun toString(input: Any?): String {
         if (input == null) return Objects.toString(null)
@@ -162,8 +178,8 @@ object Utils {
     }
 
     /**
-     * Converts a string to a [Regex]. If the input is wrapped in `/.../`, returns raw regex;
-     * otherwise, quotes it as an exact match.
+     * Converts the input string to a [Regex].
+     * If wrapped in `/.../`, uses it as raw regex; otherwise escapes it for exact matching.
      */
     fun toRegex(input: String): Regex {
         return if (input.length > 2 && Stream.of(0, input.length - 1).allMatch { input[it] == '/' }) {
@@ -174,7 +190,7 @@ object Utils {
     }
 
     /**
-     * Creates a [FileCollection] from multiple files relative to the root directory.
+     * Creates a Gradle [FileCollection] from multiple files relative to the root directory.
      */
     fun fileCollection(settings: Settings, vararg files: File): FileCollection {
         @Suppress("UnstableApiUsage")
@@ -182,7 +198,7 @@ object Utils {
     }
 
     /**
-     * Wraps a Java [Consumer] as a Gradle [Action].
+     * Wraps a Java [Consumer] as a Gradle [Action] for DSL compatibility.
      */
     fun <T : Any> action(consumer: Consumer<T>): Action<T> {
         return object : Action<T> {
@@ -193,7 +209,10 @@ object Utils {
     }
 
     /**
-     * Wraps a Kotlin block as a Groovy [Closure] for compatibility with Groovy-based APIs.
+     * Wraps a Kotlin lambda in a Groovy [Closure] for use with Groovy-based Gradle APIs.
+     *
+     * @param delegate Optional closure delegate
+     * @param block    The Kotlin lambda to execute
      */
     fun <T> closure(delegate: Any? = null, block: () -> T): Closure<T> {
         return object : Closure<T>(delegate) {
@@ -203,7 +222,7 @@ object Utils {
 }
 
 /**
- * A List<String> wrapper that trims and filters out blank/null values.
+ * Immutable list wrapper that trims and removes null/blank strings.
  */
 private class TrimmedList private constructor(
     private val delegate: List<String>
@@ -212,6 +231,7 @@ private class TrimmedList private constructor(
     override fun toString(): String = delegate.toString()
 
     companion object {
+        /** Creates a [TrimmedList] from any list, removing null/blank elements and trimming whitespace. */
         fun from(list: List<String?>): TrimmedList {
             return if (list is TrimmedList) {
                 list
