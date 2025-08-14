@@ -64,7 +64,8 @@ publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
-            artifactId = Utils.split(pluginName.get(), true, true, true).joinToString("_")
+            artifactId = Utils.split(pluginName.get(), nonAlphaNumeric = true, camelCase = true, lowercase = true)
+                .joinToString("_")
         }
     }
 }
@@ -88,8 +89,7 @@ buildConfig {
     // Include gradle.properties entries as constants (only valid Java identifiers)
     properties.keys.map { Pair(it, it.replace(".", "_").trim()) }
         .filter { pair -> pair.component1() == pair.component2() || !properties.containsKey(pair.component2()) }
-        .filter { pair -> pair.component2().matches(Regex("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$")) }
-        .filter { pair ->
+        .filter { pair -> pair.component2().matches(Regex("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$")) }.filter { pair ->
             // @formatter:off
             val javaReservedWords = Stream.of(
                 "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class",
