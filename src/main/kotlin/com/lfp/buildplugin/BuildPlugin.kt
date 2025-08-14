@@ -64,14 +64,13 @@ class BuildPlugin : Plugin<Settings> {
         val pattern =
             "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/default.libs.versions.toml"
         val resources = Utils.resources(pattern)
-        var found = false
+        if (resources.isEmpty()) {
+            Utils.logger.warn("version catalogs not found")
+            return
+        }
         for (resource in resources) {
             val resourceVersionCatalog = VersionCatalog.from(settings, resource)
             resourceVersionCatalog.execute(settings)
-            found = true
-        }
-        if (!found) {
-            Utils.logger.warn("version catalogs not found")
         }
     }
 
