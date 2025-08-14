@@ -29,9 +29,13 @@ replay_pid*
 *.iws
 *.ipr
 
+# Kotlin
+.kotlin/
+
 # Gradle
 .gradle/
 build/
+
 
 # Local dev-only files or folders
 *-dev-local

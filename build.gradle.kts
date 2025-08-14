@@ -1,4 +1,5 @@
 import com.lfp.buildplugin.shared.LibraryAutoConfigOptions
+import com.lfp.buildplugin.shared.Utils
 import java.util.stream.Stream
 
 // === Repository configuration for resolving plugins and dependencies ===
@@ -33,6 +34,7 @@ kotlin {
     }
 }
 
+
 // === Test dependencies ===
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
@@ -56,6 +58,17 @@ val pluginImplementationClass = providers.gradleProperty("plugin_implementation_
 val pluginPackageName = pluginImplementationClass.map { it.substringBeforeLast(".") }
 val pluginName = pluginImplementationClass.map { it.substringAfterLast('.') }
 group = pluginPackageName.get()
+
+
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+            artifactId = Utils.split(pluginName.get(), true, true, true).joinToString("_")
+        }
+    }
+}
+
 
 // === Plugin registration ===
 gradlePlugin {
