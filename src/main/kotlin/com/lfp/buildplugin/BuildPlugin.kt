@@ -5,6 +5,7 @@ import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
+import org.gradle.api.initialization.resolve.RepositoriesMode
 import org.gradle.internal.extensions.core.extra
 import java.io.File
 import java.nio.file.FileVisitResult
@@ -32,6 +33,7 @@ class BuildPlugin : Plugin<Settings> {
      * and walks the file tree to find and include subprojects.
      */
     override fun apply(settings: Settings) {
+        configureRepositories(settings)
         configureVersionCatalogs(settings)
 
         // Configure root project metadata
@@ -53,6 +55,8 @@ class BuildPlugin : Plugin<Settings> {
         })
     }
 
+
+
     /**
      * Locates and applies default version catalogs packaged with the plugin.
      *
@@ -71,6 +75,21 @@ class BuildPlugin : Plugin<Settings> {
         for (resource in resources) {
             val resourceVersionCatalog = VersionCatalog.from(settings, resource)
             resourceVersionCatalog.execute(settings)
+        }
+    }
+
+    /**
+     * Configures dependency resolution repositories for the given Gradle [Settings] instance.
+     *
+     * This method modifies the global dependency resolution management configuration.
+     *
+     * @param settings the Gradle [Settings] to configure.
+     */
+    @Suppress("UnstableApiUsage")
+    private fun configureRepositories(settings: Settings) {
+        settings.dependencyResolutionManagement.apply {
+            repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+            repositories.add(repositories.mavenCentral())
         }
     }
 
@@ -143,25 +162,13 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
-        configureRepositories(project)
+
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
     }
 
-    /**
-     * Configures repositories for the given Gradle project.
-     *
-     * This method ensures that the project has access to repositories for resolving dependencies.
-     * It only affects the given [project], not its subprojects or the root project.
-     *
-     * @param project the Gradle [Project] whose repositories will be configured.
-     */
-    private fun configureRepositories(project: Project) {
-        project.repositories.apply {
-            mavenCentral()
-        }
-    }
+
 
     /**
      * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists
