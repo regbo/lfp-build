@@ -7,6 +7,8 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import java.util.*
+import java.util.stream.Collectors
+import java.util.stream.Stream
 
 /**
  * Extended [LibraryAutoConfig] that adds per-library configuration behavior,
@@ -28,22 +30,30 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     fun add(project: Project, dependency: MinimalExternalModuleDependency): Boolean {
         val configurations = configurations(project)
         if (configurations.isEmpty()) return false
-        var dependencyNotation: Any = dependency.module
+
+
         val version = dependency.versionConstraint.requiredVersion
-        if (!version.isEmpty()) {
-            dependencyNotation = "${dependencyNotation}:${version}"
-        }
-        if (platform) {
-            dependencyNotation = project.dependencies.platform(dependencyNotation)
+        val dependencyNotation: Any
+        if (version.isEmpty()) {
+            require(!platform, { "platform version required - ${dependency}" })
+            dependencyNotation = mapOf("group" to dependency.group, "name" to dependency.name)
+        } else {
+            val notation =
+                Stream.of<String>(dependency.group, dependency.name, version).collect(Collectors.joining(":"))
+            if (platform) {
+                dependencyNotation = project.dependencies.platform(notation)
+            } else {
+                dependencyNotation = notation
+            }
         }
         for (configuration in configurations) {
-            project.dependencies.add(configuration.name, dependencyNotation)
             Utils.logger.lifecycle(
-                "dependency added - configurationNaME:{} dependencyNotation:{} autoConfigOptions:{}",
+                "configuring dependency - configurationName:{} dependencyNotation:{} autoConfigOptions:{}",
                 configuration.name,
                 dependencyNotation,
                 Utils.toString(this, ToStringStyle.NO_CLASS_NAME_STYLE)
             )
+            project.dependencies.add(configuration.name, dependencyNotation)
         }
         return true
     }
@@ -137,4 +147,5 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             return result
         }
     }
+
 }
