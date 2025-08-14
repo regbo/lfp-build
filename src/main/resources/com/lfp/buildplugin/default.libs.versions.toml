@@ -7,10 +7,11 @@ lombok = { module = "org.projectlombok:lombok", version = "1.18.38", autoConfigO
 # platform implementation
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", autoConfigOptions = { enforcedPlatform = true } }
 # implementation
+spring-boot-starter-logging = { module = "org.springframework.boot:spring-boot-starter-logging" }
 apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
-logback-classic = { module = 'ch.qos.logback:logback-classic' }
-apache-logging-log4j-to-slf4j = { module = "org.apache.logging.log4j:log4j-to-slf4j" }
-slf4j-jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j" }
+# logback-classic = { module = 'ch.qos.logback:logback-classic' }
+# apache-logging-log4j-to-slf4j = { module = "org.apache.logging.log4j:log4j-to-slf4j" }
+# slf4j-jul-to-slf4j = { module = "org.slf4j:jul-to-slf4j" }
 one-util-streamex = { module = "one.util:streamex", version = "0.8.4" }
 # platform testImplementation
 junit-bom = { module = "org.junit:junit-bom", version = "5.9.1", autoConfigOptions = { enforcedPlatform = true } }

@@ -5,8 +5,6 @@ import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
-import org.gradle.api.tasks.SourceSet
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.internal.extensions.core.extra
 import java.io.File
 import java.nio.file.FileVisitResult
@@ -14,7 +12,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
-import java.util.function.Consumer
 import java.util.regex.Pattern
 
 /**
@@ -47,7 +44,7 @@ class BuildPlugin : Plugin<Settings> {
         // Walk the root directory tree to discover and include module projects
         Files.walkFileTree(settings.rootDir.toPath(), object : SimpleFileVisitor<Path>() {
             override fun preVisitDirectory(dir: Path?, attrs: BasicFileAttributes): FileVisitResult {
-                if (isModuleProjectDir(settings, dir) && include(settings, dir!!)) {
+                if (isModuleProjectDir(settings, dir) && includeProject(settings, dir!!)) {
                     // Skip recursion into a module once included
                     return FileVisitResult.SKIP_SUBTREE
                 }
@@ -109,7 +106,7 @@ class BuildPlugin : Plugin<Settings> {
      * @param projectDir The path to the candidate project directory
      * @return true if included, false if skipped
      */
-    private fun include(settings: Settings, projectDir: Path): Boolean {
+    private fun includeProject(settings: Settings, projectDir: Path): Boolean {
         val projectDirFile = projectDir.toFile().canonicalFile
         val projectDirRelativePath = projectDirFile.relativeTo(settings.rootDir.canonicalFile).path
         val projectPathSegments = projectDirRelativePath.split(Pattern.quote(File.separator).toRegex())
@@ -147,43 +144,8 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
-        configureProjectLogbackXml(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
-        }
-    }
-
-
-    /**
-     * Ensures a default `logback.xml` exists under the build output resources for the `main` source set.
-     *
-     * The method resolves `build/resources/main` from the `main` source set output. If the directory
-     * exists and no `logback.xml` is present, it creates the parent directory if needed and writes a
-     * standard console-only Logback configuration with a sensible pattern at INFO level.
-     *
-     * @param project The Gradle [Project] to configure
-     */
-    private fun configureProjectLogbackXml(project: Project) {
-        val genDir = project.layout.buildDirectory.dir(
-            "generated/sources/logback"
-        )
-        val gen = project.tasks.register("generateLogbackXml", GenerateLogback::class.java) {
-            outDir.set(genDir)
-        }
-        val dependsOnGen = Consumer<String> { taskName ->
-            project.tasks.named(taskName, Utils.action { task ->
-                task.dependsOn(gen)
-            })
-        }
-        listOf("jar", "sourcesJar").forEach(dependsOnGen)
-        val srcSets = project.extensions.findByType(SourceSetContainer::class.java)
-        if (srcSets != null) {
-            srcSets.named(SourceSet.MAIN_SOURCE_SET_NAME, Utils.action { main ->
-                main.resources.srcDir(genDir)
-                dependsOnGen.accept(main.processResourcesTaskName)
-            })
-        } else {
-            Utils.logger.lifecycle("src sets not found")
         }
     }
 
