@@ -106,8 +106,13 @@ data class VersionCatalog(
      * @param libs    The [org.gradle.api.artifacts.VersionCatalog] instance
      */
     fun apply(project: Project, libs: org.gradle.api.artifacts.VersionCatalog) {
-        libs.libraryAliases.forEach { alias ->
-            val autoConfigOptions = autoConfigOptions()[alias] ?: LibraryAutoConfigOptions()
+        libs.libraryAliases.map { alias ->
+            Pair(alias, autoConfigOptions()[alias] ?: LibraryAutoConfigOptions())
+        }.sortedBy { pair ->
+            if (pair.component2().enforcedPlatform) 0 else 1
+        }.forEach { pair ->
+            val alias = pair.component1()
+            val autoConfigOptions = pair.component2()
             val dep = libs.findLibrary(alias).get().get()
             autoConfigOptions.add(project, dep)
         }

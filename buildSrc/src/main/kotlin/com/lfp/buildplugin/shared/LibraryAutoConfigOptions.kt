@@ -128,7 +128,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
                             optionsNode,
                             LibraryAutoConfigOptions::class.java
                         )
-                        result[alias] = parsed
+                        result.put(alias, parsed)
                     }
                 }
             }
