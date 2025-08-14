@@ -5,6 +5,8 @@ import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.internal.extensions.core.extra
 import org.gradle.language.jvm.tasks.ProcessResources
 import java.io.File
@@ -162,34 +164,31 @@ class BuildPlugin : Plugin<Settings> {
      * @param project The Gradle [Project] to configure
      */
     private fun configureProjectLogbackXml(project: Project, packageDirSegments: List<String>) {
-        project.tasks.configureEach(Utils.action { task ->
-            if ("processResources" == task.name && task is ProcessResources) {
-                val generatedResourcesDir =
-                    project.layout.buildDirectory.dir("generated/resources/" + packageDirSegments.joinToString("/")).map { it.asFile }
-                val logbackXml = File(generatedResourcesDir.get(), "logback.xml")
-                if (logbackXml.exists()) {
-                    Utils.logger.debug("logback configuration exists - {}", logbackXml.absolutePath)
-                } else {
-                    logbackXml.parentFile.mkdirs()
-                    //language=xml
-                    val logbackXmlContent = """
-                    <configuration>
-                        <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-                            <encoder>
-                                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-                            </encoder>
-                        </appender>
-                        <root level="INFO">
-                            <appender-ref ref="STDOUT"/>
-                        </root>
-                    </configuration>
-                    """.trimIndent()
-                    logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
-                    task.from(generatedResourcesDir)
-                    Utils.logger.debug("logback configuration created - {}", logbackXml.absolutePath)
-                }
-            }
+        val srcSets = project.extensions.findByType(SourceSetContainer::class.java)
+        srcSets?.named(SourceSet.MAIN_SOURCE_SET_NAME, Utils.action { sourceSet ->
+            val logbackXmlDir =
+                project.layout.buildDirectory.dir("generated/" + packageDirSegments.joinToString("/") + "/logback")
+                    .map { it.asFile }.get()
+            val logbackXml = File(logbackXmlDir, "logback.xml")
+            logbackXml.parentFile.mkdirs()
+            //language=xml
+            val logbackXmlContent = """
+                        <configuration>
+                            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                                <encoder>
+                                    <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                                </encoder>
+                            </appender>
+                            <root level="INFO">
+                                <appender-ref ref="STDOUT"/>
+                            </root>
+                        </configuration>
+                        """.trimIndent()
+            logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
+            Utils.logger.debug("logback configuration created - {}", logbackXml.absolutePath)
+            sourceSet.resources.srcDirs(logbackXmlDir)
         })
+
     }
 
 
