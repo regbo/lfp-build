@@ -186,7 +186,7 @@ class BuildPlugin : Plugin<Settings> {
                         """.trimIndent()
             logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
             Utils.logger.debug("logback configuration created - {}", logbackXml.absolutePath)
-            sourceSet.resources.srcDirs(logbackXmlDir)
+            sourceSet.resources.srcDir(logbackXmlDir)
         })
 
     }
