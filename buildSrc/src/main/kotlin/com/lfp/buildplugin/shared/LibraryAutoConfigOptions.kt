@@ -15,7 +15,7 @@ import java.util.*
  */
 open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     /** If true, dependencies will be added as enforced platforms. */
-    var enforcedPlatform = false
+    var platform = false
 
     /**
      * Adds the given dependency to the resolved configurations for this project,
@@ -28,22 +28,23 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     fun add(project: Project, dependency: MinimalExternalModuleDependency): Boolean {
         val configurations = configurations(project)
         if (configurations.isEmpty()) return false
-
+        var dependencyNotation: Any = dependency.module
         val version = dependency.versionConstraint.requiredVersion
-        val notation = "${dependency.module}:$version"
-        val dependencyNotation: Any =
-            if (enforcedPlatform) project.dependencies.enforcedPlatform(notation) else notation
-
+        if (!version.isEmpty()) {
+            dependencyNotation = "${dependencyNotation}:${version}"
+        }
+        if (platform) {
+            dependencyNotation = project.dependencies.platform(dependencyNotation)
+        }
         for (configuration in configurations) {
             project.dependencies.add(configuration.name, dependencyNotation)
             Utils.logger.lifecycle(
-                "dependency added - configuration:{} dependencyNotation:{} autoConfigOptions:{}",
+                "dependency added - configurationNaME:{} dependencyNotation:{} autoConfigOptions:{}",
                 configuration.name,
                 dependencyNotation,
                 Utils.toString(this, ToStringStyle.NO_CLASS_NAME_STYLE)
             )
         }
-
         return true
     }
 
@@ -59,7 +60,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
 
         val configurationNames = configurations ?: when {
             strictConfigurations -> emptyList()
-            enforcedPlatform -> listOf("implementation")
+            platform -> listOf("implementation")
             else -> listOf("api")
         }
 

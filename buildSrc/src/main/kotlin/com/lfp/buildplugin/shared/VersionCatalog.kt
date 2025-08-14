@@ -109,7 +109,7 @@ data class VersionCatalog(
         libs.libraryAliases.map { alias ->
             Pair(alias, autoConfigOptions()[alias] ?: LibraryAutoConfigOptions())
         }.sortedBy { pair ->
-            if (pair.component2().enforcedPlatform) 0 else 1
+            if (pair.component2().platform) 0 else 1
         }.forEach { pair ->
             val alias = pair.component1()
             val autoConfigOptions = pair.component2()
