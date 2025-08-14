@@ -38,8 +38,12 @@ class BuildPlugin : Plugin<Settings> {
         // Configure root project metadata
         settings.gradle.beforeProject(Utils.action { project ->
             if (project.projectDir == settings.rootDir) {
-                configureProject(project, emptyList(), Utils.split(project.name))
+                beforeProjectEvaluated(project, emptyList(), Utils.split(project.name))
             }
+        })
+        // Configure project after evaluated
+        settings.gradle.afterProject(Utils.action { project ->
+            afterProjectEvaluated(project)
         })
 
         // Walk the root directory tree to discover and include module projects
@@ -128,10 +132,9 @@ class BuildPlugin : Plugin<Settings> {
 
         settings.gradle.beforeProject(Utils.action { project ->
             if (project.projectDir == projectDirFile) {
-                configureProject(project, projectPathSegments, projectNameSegments)
+                beforeProjectEvaluated(project, projectPathSegments, projectNameSegments)
             }
         })
-
         return true
     }
 
@@ -139,17 +142,28 @@ class BuildPlugin : Plugin<Settings> {
      * Stores metadata about the project in its extra properties and
      * initializes its source directory if needed.
      */
-    private fun configureProject(
+    private fun beforeProjectEvaluated(
         project: Project, projectPathSegments: List<String>, projectNameSegments: List<String>
     ) {
         project.extra["projectPathSegments"] = projectPathSegments
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
-        configureProjectLogbackXml(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
+    }
+
+    /**
+     * Executes post-evaluation configuration tasks for a project.
+     *
+     * This method is invoked after the project has been evaluated and performs
+     * tasks that rely on the presence of the build output directory.
+     *
+     * @param project The Gradle [Project] to configure
+     */
+    private fun afterProjectEvaluated(project: Project) {
+        configureProjectLogbackXml(project)
     }
 
     /**
