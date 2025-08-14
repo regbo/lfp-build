@@ -54,16 +54,16 @@ val pluginId = providers.provider {
 }
 
 // === Extract plugin name and group from the implementation class name ===
-val pluginImplementationClassName = providers.gradleProperty("plugin_implementation_class_name")
-val pluginName = pluginImplementationClassName.map { it.substringAfterLast('.') }
-group = pluginImplementationClassName.get().substringBeforeLast(".")
+val pluginImplementationClass = providers.gradleProperty("plugin_implementation_class")
+val pluginName = pluginImplementationClass.map { it.substringAfterLast('.') }
+group = pluginImplementationClass.get().substringBeforeLast(".")
 
 // === Register the plugin with its ID and implementation class ===
 gradlePlugin {
     plugins {
         register(pluginName.get()) {
             id = pluginId.get()
-            implementationClass = pluginImplementationClassName.get()
+            implementationClass = pluginImplementationClass.get()
         }
     }
 }
@@ -86,7 +86,7 @@ buildConfig {
     // Also include the plugin package name
     buildConfigField(
         "plugin_package_name",
-        pluginImplementationClassName.map { it.substringBeforeLast(".") }
+        pluginImplementationClass.map { it.substringBeforeLast(".") }
     )
 }
 

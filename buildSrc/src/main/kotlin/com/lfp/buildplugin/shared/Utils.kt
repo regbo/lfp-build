@@ -50,6 +50,10 @@ object Utils {
         PathMatchingResourcePatternResolver()
     }
 
+    fun sayHello() {
+        println("hello")
+    }
+
 
     /**
      * Splits a string using optional options:
@@ -104,11 +108,13 @@ object Utils {
 
             try {
                 resources.add(pathToResource(Paths.get(inputTrimmed)))
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
 
             try {
                 resources.addAll(resourcePatternResolver.getResources(inputTrimmed))
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
 
             return resources.filterNotNull().distinct().toList()
         }
