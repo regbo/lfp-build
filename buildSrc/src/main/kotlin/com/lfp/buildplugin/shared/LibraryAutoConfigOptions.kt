@@ -72,7 +72,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
 
         val configurationNames = configurations ?: when {
             strictConfigurations -> emptyList()
-            platform -> listOf("api", "/^implementation$/", "/.+Implementation.*/", "/^annotation.*$/", "/.+Annotation.*/")
+            platform -> listOf("api", "testImplementation")
             else -> listOf("api")
         }
 
