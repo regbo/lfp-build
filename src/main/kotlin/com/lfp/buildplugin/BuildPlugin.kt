@@ -76,7 +76,7 @@ class BuildPlugin : Plugin<Settings> {
             found = true
         }
         if (!found) {
-            Utils.logger.lifecycle("version catalogs not found")
+            Utils.logger.warn("version catalogs not found")
         }
     }
 
@@ -199,6 +199,7 @@ class BuildPlugin : Plugin<Settings> {
                 </configuration>
             """.trimIndent()
                 logbackXml.writeText(logbackXmlContent, charset = Charsets.UTF_8)
+                Utils.logger.debug("logback configuration created - {}", logbackXml.absolutePath)
             }
         }
     }
