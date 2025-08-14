@@ -5,7 +5,6 @@ import com.lfp.buildplugin.shared.VersionCatalog
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.initialization.Settings
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.internal.extensions.core.extra
 import org.gradle.language.jvm.tasks.ProcessResources
 import java.io.File
@@ -165,10 +164,9 @@ class BuildPlugin : Plugin<Settings> {
     private fun configureProjectLogbackXml(project: Project, packageDirSegments: List<String>) {
         project.tasks.configureEach(Utils.action { task ->
             if ("processResources" == task.name && task is ProcessResources) {
-                val generatedResourcesDirPath = "generated/resources/" + packageDirSegments.joinToString("/")
                 val generatedResourcesDir =
-                    project.layout.buildDirectory.dir(generatedResourcesDirPath).map { it.asFile }.get()
-                val logbackXml = File(generatedResourcesDir, "logback.xml")
+                    project.layout.buildDirectory.dir("generated/resources/" + packageDirSegments.joinToString("/")).map { it.asFile }
+                val logbackXml = File(generatedResourcesDir.get(), "logback.xml")
                 if (logbackXml.exists()) {
                     Utils.logger.debug("logback configuration exists - {}", logbackXml.absolutePath)
                 } else {
