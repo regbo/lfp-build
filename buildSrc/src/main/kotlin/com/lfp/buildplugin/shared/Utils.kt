@@ -172,9 +172,9 @@ object Utils {
      * Renders an object into a short string form using reflection-based
      * [ToStringBuilder] with [ToStringStyle.SHORT_PREFIX_STYLE].
      */
-    fun toString(input: Any?): String {
+    fun toString(input: Any?, style: ToStringStyle = ToStringStyle.SHORT_PREFIX_STYLE): String {
         if (input == null) return Objects.toString(null)
-        return ToStringBuilder.reflectionToString(input, ToStringStyle.SHORT_PREFIX_STYLE)
+        return ToStringBuilder.reflectionToString(input, style)
     }
 
     /**

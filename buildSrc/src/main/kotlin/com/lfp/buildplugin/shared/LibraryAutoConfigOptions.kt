@@ -2,6 +2,7 @@ package com.lfp.buildplugin.shared
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
+import org.apache.commons.lang3.builder.ToStringStyle
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
@@ -37,7 +38,12 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             project.dependencies.add(configuration.name, dependencyNotation)
             Utils.logger.lifecycle(
                 "dependency added - configuration:${configuration.name} " +
-                        "dependencyNotation:$dependencyNotation autoConfigOptions:$this"
+                        "dependencyNotation:$dependencyNotation autoConfigOptions:${
+                            Utils.toString(
+                                this,
+                                ToStringStyle.NO_CLASS_NAME_STYLE
+                            )
+                        }"
             )
         }
 

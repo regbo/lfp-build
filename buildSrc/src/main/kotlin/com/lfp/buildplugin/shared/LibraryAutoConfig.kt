@@ -20,9 +20,6 @@ open class LibraryAutoConfig {
     /** Optional list of configuration name patterns (e.g., "api", "implementation"). */
     var configurations: List<String>? = null
 
-      /**
-     * Returns a short string representation of this config, using reflection-based formatting.
-     */
     override fun toString(): String {
         return Utils.toString(this)
     }

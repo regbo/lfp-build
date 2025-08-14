@@ -26,6 +26,12 @@ java {
 
 kotlin {
     jvmToolchain(javaVersion.get())
+    sourceSets {
+        getByName("main") {
+            // Include additional Kotlin sources from buildSrc
+            kotlin.srcDir("buildSrc/src/main/kotlin")
+        }
+    }
 }
 
 // === Test dependencies ===
