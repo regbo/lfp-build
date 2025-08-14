@@ -9,7 +9,6 @@ repositories {
 // === Plugins required for building and publishing this Gradle plugin ===
 plugins {
     `kotlin-dsl`                      // Enable Kotlin DSL for build scripts
-    `java-gradle-plugin`              // Allow defining and publishing Gradle plugins
     `maven-publish`                   // Enable publishing artifacts to Maven repositories
     alias(libs.plugins.buildconfig)   // BuildConfig generation via catalog plugin alias
 }
