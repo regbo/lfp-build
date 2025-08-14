@@ -151,7 +151,7 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
-        configureProjectLogbackXml(project, packageDirSegments)
+        configureProjectLogbackXml(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
@@ -167,10 +167,10 @@ class BuildPlugin : Plugin<Settings> {
      *
      * @param project The Gradle [Project] to configure
      */
-    private fun configureProjectLogbackXml(project: Project, packageDirSegments: List<String>) {
+    private fun configureProjectLogbackXml(project: Project) {
         val srcSets = project.extensions.findByType(SourceSetContainer::class.java) ?: return
         val genDir = project.layout.buildDirectory.dir(
-            "generated/${packageDirSegments.joinToString("/")}/logback"
+            "generated/sources/logback"
         )
         abstract class GenerateLogback : DefaultTask() {
             @get:OutputDirectory
