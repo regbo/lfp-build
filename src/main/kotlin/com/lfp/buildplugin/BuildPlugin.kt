@@ -172,41 +172,15 @@ class BuildPlugin : Plugin<Settings> {
         val genDir = project.layout.buildDirectory.dir(
             "generated/sources/logback"
         )
-        abstract class GenerateLogback : DefaultTask() {
-            @get:OutputDirectory
-            abstract val outDir: DirectoryProperty
-
-            @TaskAction
-            fun run() {
-                val dir = outDir.get().asFile
-                dir.mkdirs()
-                //language=xml
-                val content =
-                    """
-                <configuration>
-                  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-                    <encoder>
-                      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-                    </encoder>
-                  </appender>
-                  <root level="INFO">
-                    <appender-ref ref="STDOUT"/>
-                  </root>
-                </configuration>
-                """
-                File(dir, "logback.xml").writeText(
-                    content.trimIndent(),
-                    Charsets.UTF_8
-                )
-            }
-        }
         val gen = project.tasks.register("generateLogbackXml", GenerateLogback::class.java) {
             outDir.set(genDir)
         }
         srcSets.named(SourceSet.MAIN_SOURCE_SET_NAME).configure(Utils.action { main ->
             main.resources.srcDir(genDir)
-            project.tasks.named(main.processResourcesTaskName, ProcessResources::class.java) {
-                dependsOn(gen)
+            for (taskName in listOf(main.processResourcesTaskName, "jar", "sourcesJar")) {
+                project.tasks.named(taskName, Utils.action { task ->
+                    task.dependsOn(gen)
+                })
             }
         })
 
@@ -271,5 +245,34 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
+
+    abstract class GenerateLogback : DefaultTask() {
+        @get:OutputDirectory
+        abstract val outDir: DirectoryProperty
+
+        @TaskAction
+        fun run() {
+            val dir = outDir.get().asFile
+            dir.mkdirs()
+            //language=xml
+            val content =
+                """
+                <configuration>
+                  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                    <encoder>
+                      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                    </encoder>
+                  </appender>
+                  <root level="INFO">
+                    <appender-ref ref="STDOUT"/>
+                  </root>
+                </configuration>
+                """
+            File(dir, "logback.xml").writeText(
+                content.trimIndent(),
+                Charsets.UTF_8
+            )
+        }
+    }
 
 }
