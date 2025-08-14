@@ -56,7 +56,6 @@ class BuildPlugin : Plugin<Settings> {
     }
 
 
-
     /**
      * Locates and applies default version catalogs packaged with the plugin.
      *
@@ -87,9 +86,11 @@ class BuildPlugin : Plugin<Settings> {
      */
     @Suppress("UnstableApiUsage")
     private fun configureRepositories(settings: Settings) {
-        settings.dependencyResolutionManagement.apply {
+        settings.dependencyResolutionManagement {
             repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-            repositories.add(repositories.mavenCentral())
+            repositories {
+                mavenCentral()
+            }
         }
     }
 
@@ -167,7 +168,6 @@ class BuildPlugin : Plugin<Settings> {
             configureProjectSrcDir(project, packageDirSegments)
         }
     }
-
 
 
     /**
