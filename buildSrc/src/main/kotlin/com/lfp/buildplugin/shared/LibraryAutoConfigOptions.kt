@@ -41,7 +41,7 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             val notation =
                 Stream.of<String>(dependency.group, dependency.name, version).collect(Collectors.joining(":"))
             if (platform) {
-                dependencyNotation = project.dependencies.enforcedPlatform(notation)
+                dependencyNotation = project.dependencies.platform(notation)
             } else {
                 dependencyNotation = notation
             }
@@ -53,7 +53,9 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
                 dependencyNotation,
                 Utils.toString(this, ToStringStyle.NO_CLASS_NAME_STYLE)
             )
-            project.dependencies.add(configuration.name, dependencyNotation)
+            project.dependencies.apply {
+                add(configuration.name, dependencyNotation)
+            }
         }
         return true
     }

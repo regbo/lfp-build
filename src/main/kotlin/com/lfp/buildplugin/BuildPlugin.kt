@@ -143,11 +143,25 @@ class BuildPlugin : Plugin<Settings> {
         project.extra["projectNameSegments"] = projectNameSegments
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
+        configureRepositories(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
     }
 
+    /**
+     * Configures repositories for the given Gradle project.
+     *
+     * This method ensures that the project has access to repositories for resolving dependencies.
+     * It only affects the given [project], not its subprojects or the root project.
+     *
+     * @param project the Gradle [Project] whose repositories will be configured.
+     */
+    private fun configureRepositories(project: Project) {
+        project.repositories.apply {
+            mavenCentral()
+        }
+    }
 
     /**
      * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists
