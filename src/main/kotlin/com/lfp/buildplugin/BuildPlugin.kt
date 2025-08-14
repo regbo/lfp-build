@@ -63,7 +63,7 @@ class BuildPlugin : Plugin<Settings> {
      */
     private fun configureVersionCatalogs(settings: Settings) {
         val pattern =
-            "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/xxxxxdefault.libs.versions.toml"
+            "classpath*:${BuildPluginBuildConfig.plugin_package_name.replace('.', '/')}/default.libs.versions.toml"
         val resources = Utils.resources(pattern)
         var found = false
         for (resource in resources) {
