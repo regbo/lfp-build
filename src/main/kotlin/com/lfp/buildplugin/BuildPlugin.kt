@@ -204,11 +204,13 @@ class BuildPlugin : Plugin<Settings> {
 
         val fromProvider = project.resources.text.fromString(logbackXmlContent)
 
-        project.tasks.named("processResources", Copy::class.java) {
-            duplicatesStrategy = DuplicatesStrategy.INCLUDE
-            from(fromProvider) {
-                rename { "logback.xml" }
-                into("") // root of resources on the runtime classpath
+        project.tasks.withType(Copy::class.java).configureEach {
+            if (name == "processResources") {
+                duplicatesStrategy = DuplicatesStrategy.INCLUDE
+                from(fromProvider) {
+                    rename { "logback.xml" }
+                    into("")
+                }
             }
         }
     }
