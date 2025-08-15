@@ -11,26 +11,25 @@ import java.util.stream.Collectors
 import java.util.stream.Stream
 
 /**
- * Extended [LibraryAutoConfig] that adds per-library configuration behavior,
- * such as enforced platform support and the ability to apply dependencies
- * automatically to appropriate Gradle configurations.
+ * Extended [LibraryAutoConfig] that adds per-library configuration behavior, such as enforced
+ * platform support and the ability to apply dependencies automatically to appropriate Gradle
+ * configurations.
  */
 open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     /** If true, dependencies will be added as enforced platforms. */
     var platform = false
 
     /**
-     * Adds the given dependency to the resolved configurations for this project,
-     * based on the configured rules and fallbacks.
+     * Adds the given dependency to the resolved configurations for this project, based on the
+     * configured rules and fallbacks.
      *
-     * @param project    The target Gradle [Project]
+     * @param project The target Gradle [Project]
      * @param dependency The dependency to add
      * @return true if added to at least one configuration, false if no configurations matched
      */
     fun add(project: Project, dependency: MinimalExternalModuleDependency): Boolean {
         val configurations = configurations(project)
         if (configurations.isEmpty()) return false
-
 
         val version = dependency.versionConstraint.requiredVersion
         val dependencyNotation: Any
@@ -39,7 +38,8 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             dependencyNotation = mapOf("group" to dependency.group, "name" to dependency.name)
         } else {
             val notation =
-                Stream.of<String>(dependency.group, dependency.name, version).collect(Collectors.joining(":"))
+                Stream.of<String>(dependency.group, dependency.name, version)
+                    .collect(Collectors.joining(":"))
             if (platform) {
                 dependencyNotation = project.dependencies.platform(notation)
             } else {
@@ -47,22 +47,20 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             }
         }
         for (configuration in configurations) {
-            project.dependencies.apply {
-                add(configuration.name, dependencyNotation)
-            }
+            project.dependencies.apply { add(configuration.name, dependencyNotation) }
             Utils.logger.lifecycle(
                 "dependency added - configurationName:{} dependencyNotation:{} autoConfigOptions:{}",
                 configuration.name,
                 dependencyNotation,
-                Utils.toString(this, ToStringStyle.NO_CLASS_NAME_STYLE)
+                Utils.toString(this, ToStringStyle.NO_CLASS_NAME_STYLE),
             )
         }
         return true
     }
 
     /**
-     * Resolves configurations from the project according to configured names and fallbacks.
-     * Honors `enabled`, `strictConfigurations`, and `platform` settings.
+     * Resolves configurations from the project according to configured names and fallbacks. Honors
+     * `enabled`, `strictConfigurations`, and `platform` settings.
      *
      * @param project The Gradle [Project] to resolve configurations from
      * @return Set of matching configurations
@@ -70,11 +68,13 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     fun configurations(project: Project): Set<Configuration> {
         if (!enabled) return emptySet()
 
-        val configurationNames = configurations ?: when {
-            strictConfigurations -> emptyList()
-            platform -> listOf("api", "testImplementation")
-            else -> listOf("api")
-        }
+        val configurationNames =
+            configurations
+                ?: when {
+                    strictConfigurations -> emptyList()
+                    platform -> listOf("api", "testImplementation")
+                    else -> listOf("api")
+                }
 
         if (configurationNames.isEmpty()) return emptySet()
 
@@ -108,11 +108,8 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
         private const val PROPERTY_NAME = "autoConfigOptions"
 
         /** Default fallback configuration mapping (used if not strict). */
-        private val FALLBACK_CONFIGURATIONS = mapOf(
-            "api" to "implementation",
-            "implementation" to "testImplementation"
-        )
-
+        private val FALLBACK_CONFIGURATIONS =
+            mapOf("api" to "implementation", "implementation" to "testImplementation")
 
         /**
          * Reads `autoConfigOptions` entries from a TOML-based version catalog [JsonNode].
@@ -122,7 +119,10 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
          * @param remove If true, removes the `autoConfigOptions` property from the node
          * @return Map of library alias → [LibraryAutoConfigOptions]
          */
-        fun read(versionCatalogNode: JsonNode, remove: Boolean = false): Map<String, LibraryAutoConfigOptions> {
+        fun read(
+            versionCatalogNode: JsonNode,
+            remove: Boolean = false,
+        ): Map<String, LibraryAutoConfigOptions> {
             val libraries = versionCatalogNode.at("/libraries")
             if (!libraries.isObject) return emptyMap()
 
@@ -130,17 +130,17 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
 
             libraries.fields().forEach { (name, value) ->
                 if (value.isObject) {
-                    val optionsNode = if (remove)
-                        (value as ObjectNode).remove(PROPERTY_NAME)
-                    else
-                        value.get(PROPERTY_NAME)
+                    val optionsNode =
+                        if (remove) (value as ObjectNode).remove(PROPERTY_NAME)
+                        else value.get(PROPERTY_NAME)
 
                     if (optionsNode?.isObject == true) {
                         val alias = name.replace('-', '.')
-                        val parsed = Utils.tomlMapper.treeToValue(
-                            optionsNode,
-                            LibraryAutoConfigOptions::class.java
-                        )
+                        val parsed =
+                            Utils.tomlMapper.treeToValue(
+                                optionsNode,
+                                LibraryAutoConfigOptions::class.java,
+                            )
                         result.put(alias, parsed)
                     }
                 }
@@ -149,5 +149,4 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             return result
         }
     }
-
 }

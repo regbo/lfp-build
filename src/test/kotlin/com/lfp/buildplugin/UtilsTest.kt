@@ -11,33 +11,28 @@ class UtilsTest {
     @Test
     fun `split path`() {
         val file = File("test")
-        val subFile = File(arrayOf("test", "sub", "dirName", "file-name").joinToString(File.separator))
+        val subFile =
+            File(arrayOf("test", "sub", "dirName", "file-name").joinToString(File.separator))
         val result =
-            subFile.canonicalFile.relativeTo(file.canonicalFile).path.split(Pattern.quote(File.separator).toRegex())
+            subFile.canonicalFile
+                .relativeTo(file.canonicalFile)
+                .path
+                .split(Pattern.quote(File.separator).toRegex())
                 .flatMap { segment ->
-                    Utils.split(
-                        segment,
-                        lowercase = true,
-                        camelCase = true,
-                        nonAlphaNumeric = true
-                    )
+                    Utils.split(segment, lowercase = true, camelCase = true, nonAlphaNumeric = true)
                 }
         assertEquals(listOf("sub", "dir", "name", "file", "name"), result)
     }
 
     @Test
     fun `split comma`() {
-        val result = Utils.split(
-            "this   ,   is,a  ,test, wow"
-        )
+        val result = Utils.split("this   ,   is,a  ,test, wow")
         assertEquals(listOf("this", "is", "a", "test", "wow"), result)
     }
 
     @Test
     fun `split comma quoted`() {
-        val result = Utils.split(
-            "\"this   \",\"   is\",\"a  \",\"test, wow\""
-        )
+        val result = Utils.split("\"this   \",\"   is\",\"a  \",\"test, wow\"")
         assertEquals(listOf("this", "is", "a", "test, wow"), result)
     }
 
@@ -74,7 +69,12 @@ class UtilsTest {
     @Test
     fun `split with lowercase, camelCase, and nonAlphaNumeric`() {
         val result =
-            Utils.split("Hello-JSONParser_2024", nonAlphaNumeric = true, camelCase = true, lowercase = true)
+            Utils.split(
+                "Hello-JSONParser_2024",
+                nonAlphaNumeric = true,
+                camelCase = true,
+                lowercase = true,
+            )
         assertEquals(listOf("hello", "json", "parser", "2024"), result)
     }
 
@@ -83,6 +83,4 @@ class UtilsTest {
         assertEquals(emptyList<String>(), Utils.split(null))
         assertEquals(emptyList<String>(), Utils.split("  "))
     }
-
 }
-

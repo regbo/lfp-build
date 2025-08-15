@@ -13,6 +13,7 @@ import java.util.function.Consumer
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.useLines
+
 /**
  * Scans a Gradle project tree for `build.gradle` and `build.gradle.kts` files while respecting
  * `.gitignore` rules, hidden directories, and common build/temp directories.
@@ -23,11 +24,12 @@ import kotlin.io.path.useLines
  * ## Key Features
  * - Walks the project tree starting from a given [rootDir].
  * - Skips directories that are:
- *   - Git-ignored (via `.gitignore` rules merged from the root down to the current directory)
- *   - Hidden
- *   - Named `build`, `temp`, or `tmp`
+ *     - Git-ignored (via `.gitignore` rules merged from the root down to the current directory)
+ *     - Hidden
+ *     - Named `build`, `temp`, or `tmp`
  * - Skips files that are Git-ignored.
- * - Detects Gradle build scripts in both Groovy (`build.gradle`) and Kotlin DSL (`build.gradle.kts`).
+ * - Detects Gradle build scripts in both Groovy (`build.gradle`) and Kotlin DSL
+ *   (`build.gradle.kts`).
  * - Merges `.gitignore` rules found along the traversal path so that nested `.gitignore` files
  *   refine or override higher-level rules, matching Git's behavior.
  *
@@ -47,34 +49,36 @@ class BuildScanner(private val rootDir: Path) : Consumer<Action<Path>> {
      * @param buildFileAction the action to execute for each discovered build file
      */
     override fun accept(buildFileAction: Action<Path>) {
-        val fileVisitor = object : SimpleFileVisitor<Path>() {
+        val fileVisitor =
+            object : SimpleFileVisitor<Path>() {
 
-            private var ignoreNode: IgnoreNode = IgnoreNode()
+                private var ignoreNode: IgnoreNode = IgnoreNode()
 
-            override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
-                val gitIgnore = dir.resolve(".gitignore")
-                if (gitIgnore.isRegularFile()) {
-                    ignoreNode = addGitignore(ignoreNode, gitIgnore)
+                override fun preVisitDirectory(
+                    dir: Path,
+                    attrs: BasicFileAttributes,
+                ): FileVisitResult {
+                    val gitIgnore = dir.resolve(".gitignore")
+                    if (gitIgnore.isRegularFile()) {
+                        ignoreNode = addGitignore(ignoreNode, gitIgnore)
+                    }
+                    if (isIgnoredDir(dir) || isGitIgnored(ignoreNode, dir)) {
+                        return FileVisitResult.SKIP_SUBTREE
+                    }
+                    return super.preVisitDirectory(dir, attrs)
                 }
-                if (isIgnoredDir(dir) || isGitIgnored(ignoreNode, dir)) {
-                    return FileVisitResult.SKIP_SUBTREE
+
+                override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                    if (!isGitIgnored(ignoreNode, file) && isBuildFile(file)) {
+                        buildFileAction.execute(file)
+                    }
+                    return super.visitFile(file, attrs)
                 }
-                return super.preVisitDirectory(dir, attrs)
             }
-
-            override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                if (!isGitIgnored(ignoreNode, file) && isBuildFile(file)) {
-                    buildFileAction.execute(file)
-                }
-                return super.visitFile(file, attrs)
-            }
-        }
         Files.walkFileTree(rootDir, fileVisitor)
     }
 
-    /**
-     * Checks if the given file is a recognized Gradle build script.
-     */
+    /** Checks if the given file is a recognized Gradle build script. */
     private fun isBuildFile(file: Path): Boolean {
         if (file.isRegularFile()) {
             val fileName = file.fileName.toString()
@@ -89,8 +93,8 @@ class BuildScanner(private val rootDir: Path) : Consumer<Action<Path>> {
     }
 
     /**
-     * Checks if a directory should be skipped based on being hidden, starting with `.`,
-     * or being in the set of common build/temp directory names.
+     * Checks if a directory should be skipped based on being hidden, starting with `.`, or being in
+     * the set of common build/temp directory names.
      */
     private fun isIgnoredDir(dir: Path): Boolean {
         if (dir.isDirectory()) {
@@ -133,31 +137,33 @@ class BuildScanner(private val rootDir: Path) : Consumer<Action<Path>> {
             lines.forEach { raw ->
                 val line = raw.trim()
                 if (line.isEmpty() || line.startsWith("#")) return@forEach
-                resultIgnoreNode = IgnoreNode(
-                    resultIgnoreNode.rules + FastIgnoreRule(rewriteGitignoreRule(line, dirRel))
-                )
+                resultIgnoreNode =
+                    IgnoreNode(
+                        resultIgnoreNode.rules + FastIgnoreRule(rewriteGitignoreRule(line, dirRel))
+                    )
             }
         }
         return resultIgnoreNode
     }
 
     /**
-     * Rewrites a `.gitignore` rule so that it is relative to the [rootDir].
-     * This preserves anchored (`/`) and unanchored patterns, as well as negation (`!`).
+     * Rewrites a `.gitignore` rule so that it is relative to the [rootDir]. This preserves anchored
+     * (`/`) and unanchored patterns, as well as negation (`!`).
      */
     private fun rewriteGitignoreRule(rule: String, dirRel: String): String {
         if (dirRel.isEmpty()) return rule
         val neg = rule.startsWith("!")
         var body = if (neg) rule.substring(1) else rule
-        body = if (body.startsWith("/")) {
-            dirRel + body.substring(1)
-        } else {
-            if (body.startsWith("**")) {
-                dirRel + body
+        body =
+            if (body.startsWith("/")) {
+                dirRel + body.substring(1)
             } else {
-                "$dirRel**/$body"
+                if (body.startsWith("**")) {
+                    dirRel + body
+                } else {
+                    "$dirRel**/$body"
+                }
             }
-        }
         return if (neg) "!$body" else body
     }
 }

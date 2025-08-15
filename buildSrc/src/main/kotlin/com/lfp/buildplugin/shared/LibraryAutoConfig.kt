@@ -4,9 +4,9 @@ package com.lfp.buildplugin.shared
  * Base configuration for automatically wiring dependencies to Gradle configurations.
  *
  * Properties:
- *  - [enabled]               If false, disables automatic configuration for this library
- *  - [strictConfigurations]  If true, only explicitly listed configurations are considered
- *  - [configurations]         Optional list of configuration name patterns (regex supported)
+ * - [enabled] If false, disables automatic configuration for this library
+ * - [strictConfigurations] If true, only explicitly listed configurations are considered
+ * - [configurations] Optional list of configuration name patterns (regex supported)
  */
 open class LibraryAutoConfig {
     /** Whether auto-config is enabled for this library. */
