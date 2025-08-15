@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
+import java.time.Instant
 import java.util.function.Consumer
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
@@ -132,18 +133,21 @@ class BuildScanner(private val rootDir: Path) : Consumer<Action<Path>> {
         val baseDir = gitignore.parent
         var dirRel = rootDir.relativize(baseDir).toString().replace('\\', '/')
         if (dirRel.isNotEmpty() && !dirRel.endsWith("/")) dirRel += "/"
-        var resultIgnoreNode = ignoreNode
-        gitignore.useLines { lines ->
-            lines.forEach { raw ->
-                val line = raw.trim()
-                if (line.isEmpty() || line.startsWith("#")) return@forEach
-                resultIgnoreNode =
-                    IgnoreNode(
-                        resultIgnoreNode.rules + FastIgnoreRule(rewriteGitignoreRule(line, dirRel))
-                    )
+        val rules =
+            gitignore.useLines { lines ->
+                lines
+                    .mapNotNull { line ->
+                        line.trim().takeIf { it.isNotEmpty() && !it.startsWith("#") }
+                    }
+                    .map { line -> rewriteGitignoreRule(line, dirRel) }
+                    .map(::FastIgnoreRule)
+                    .toList()
             }
+        return if (rules.isEmpty()) {
+            ignoreNode
+        } else {
+            IgnoreNode(ignoreNode.rules + rules)
         }
-        return resultIgnoreNode
     }
 
     /**
@@ -167,3 +171,11 @@ class BuildScanner(private val rootDir: Path) : Consumer<Action<Path>> {
         return if (neg) "!$body" else body
     }
 }
+
+//fun main() {
+//    for (i in 0 until 10) {
+//        val startedAt = Instant.now()
+//        BuildScanner(BuildPluginBuildConfig.rootDir.toPath()).accept(::println)
+//        println("elapsed:${Instant.now().toEpochMilli() - startedAt.toEpochMilli()}")
+//    }
+//}

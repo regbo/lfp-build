@@ -78,7 +78,6 @@ object Utils {
         lowercase: Boolean = false,
     ): List<String> {
         if (str.isNullOrBlank()) return emptyList()
-
         var segments: List<String> =
             listOf(str).flatMap { segment ->
                 if (segment.contains(",")) {
@@ -89,19 +88,15 @@ object Utils {
                     listOf(segment)
                 }
             }
-
         if (nonAlphaNumeric) {
             segments = segments.flatMap { it.split("[^a-zA-Z0-9]+".toRegex()) }
         }
-
         if (camelCase) {
             segments = segments.flatMap { StringUtils.splitByCharacterTypeCamelCase(it).toList() }
         }
-
         if (lowercase) {
             segments = segments.map { it.lowercase() }
         }
-
         return TrimmedList.from(segments)
     }
 
@@ -201,18 +196,6 @@ object Utils {
             override fun execute(t: T) {
                 consumer.accept(t)
             }
-        }
-    }
-
-    /**
-     * Wraps a Kotlin lambda in a Groovy [Closure] for use with Groovy-based Gradle APIs.
-     *
-     * @param delegate Optional closure delegate
-     * @param block The Kotlin lambda to execute
-     */
-    fun <T> closure(delegate: Any? = null, block: () -> T): Closure<T> {
-        return object : Closure<T>(delegate) {
-            override fun call(vararg args: Any?): T = block()
         }
     }
 }

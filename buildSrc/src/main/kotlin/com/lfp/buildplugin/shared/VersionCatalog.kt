@@ -13,6 +13,8 @@ import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.stream.IntStream
 
+private const val GENERATED_VERSION_CATALOG_OUTPUT_PATH = "build/generated/version-catalog"
+
 /**
  * Represents a Gradle version catalog backed by a TOML resource, with optional auto-configuration
  * metadata for applying dependencies automatically.
@@ -72,12 +74,10 @@ data class VersionCatalog(val outputDirectory: File, val resource: Resource) : A
                 nameParts[index] = nameParts[index].replaceFirstChar { it.uppercase() }
             }
         }
-        nameParts.add(hash())
+        nameParts.add(context.hash)
         nameParts.joinToString("")
     }
 
-    /** Returns the MD5 hash of the catalog file contents. */
-    fun hash(): String = context.hash
 
     /** Returns the extracted auto-config metadata keyed by library alias. */
     fun autoConfigOptions(): Map<String, LibraryAutoConfigOptions> = context.autoConfigOptions
@@ -119,7 +119,6 @@ data class VersionCatalog(val outputDirectory: File, val resource: Resource) : A
     }
 
     companion object {
-        private const val GENERATED_OUTPUT_PATH = "build/generated/version-catalog"
 
         /** Creates a [VersionCatalog] instance from a [Settings] context and [Resource]. */
         fun from(settings: Settings, resource: Resource): VersionCatalog {
@@ -128,7 +127,7 @@ data class VersionCatalog(val outputDirectory: File, val resource: Resource) : A
 
         /** Resolves the generated output path relative to the given root directory. */
         private fun generatedOutputPath(rootDir: File): File {
-            return File(rootDir, GENERATED_OUTPUT_PATH)
+            return File(rootDir, GENERATED_VERSION_CATALOG_OUTPUT_PATH)
         }
     }
 }

@@ -6,16 +6,28 @@ import org.apache.commons.lang3.builder.ToStringStyle
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
+import org.gradle.api.plugins.JavaPlugin
 import java.util.*
 import java.util.stream.Collectors
 import java.util.stream.Stream
+
+
+private const val AUTO_CONFIG_PROPERTY_NAME = "autoConfigOptions"
+
+/** Default fallback configuration mapping (used if not strict). */
+private val FALLBACK_CONFIGURATIONS =
+    mapOf(
+        JavaPlugin.API_CONFIGURATION_NAME to JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
+        JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME to
+                JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME,
+    )
 
 /**
  * Extended [LibraryAutoConfig] that adds per-library configuration behavior, such as enforced
  * platform support and the ability to apply dependencies automatically to appropriate Gradle
  * configurations.
  */
-open class LibraryAutoConfigOptions : LibraryAutoConfig() {
+class LibraryAutoConfigOptions : LibraryAutoConfig() {
     /** If true, dependencies will be added as enforced platforms. */
     var platform = false
 
@@ -65,15 +77,19 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
      * @param project The Gradle [Project] to resolve configurations from
      * @return Set of matching configurations
      */
-    fun configurations(project: Project): Set<Configuration> {
+    private fun configurations(project: Project): Set<Configuration> {
         if (!enabled) return emptySet()
 
         val configurationNames =
             configurations
                 ?: when {
                     strictConfigurations -> emptyList()
-                    platform -> listOf("api", "testImplementation")
-                    else -> listOf("api")
+                    platform ->
+                        listOf(
+                            JavaPlugin.API_CONFIGURATION_NAME,
+                            JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME,
+                        )
+                    else -> listOf(JavaPlugin.API_CONFIGURATION_NAME)
                 }
 
         if (configurationNames.isEmpty()) return emptySet()
@@ -105,11 +121,6 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
     }
 
     companion object {
-        private const val PROPERTY_NAME = "autoConfigOptions"
-
-        /** Default fallback configuration mapping (used if not strict). */
-        private val FALLBACK_CONFIGURATIONS =
-            mapOf("api" to "implementation", "implementation" to "testImplementation")
 
         /**
          * Reads `autoConfigOptions` entries from a TOML-based version catalog [JsonNode].
@@ -131,8 +142,8 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
             libraries.fields().forEach { (name, value) ->
                 if (value.isObject) {
                     val optionsNode =
-                        if (remove) (value as ObjectNode).remove(PROPERTY_NAME)
-                        else value.get(PROPERTY_NAME)
+                        if (remove) (value as ObjectNode).remove(AUTO_CONFIG_PROPERTY_NAME)
+                        else value.get(AUTO_CONFIG_PROPERTY_NAME)
 
                     if (optionsNode?.isObject == true) {
                         val alias = name.replace('-', '.')
@@ -145,7 +156,6 @@ open class LibraryAutoConfigOptions : LibraryAutoConfig() {
                     }
                 }
             }
-
             return result
         }
     }
