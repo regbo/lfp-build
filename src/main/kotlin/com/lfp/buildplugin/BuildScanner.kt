@@ -9,7 +9,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
-import java.time.Instant
 import java.util.function.Consumer
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
@@ -172,10 +171,10 @@ class BuildScanner(private val rootDir: Path) : Consumer<Action<Path>> {
     }
 }
 
-//fun main() {
+// fun main() {
 //    for (i in 0 until 10) {
 //        val startedAt = Instant.now()
 //        BuildScanner(BuildPluginBuildConfig.rootDir.toPath()).accept(::println)
 //        println("elapsed:${Instant.now().toEpochMilli() - startedAt.toEpochMilli()}")
 //    }
-//}
+// }

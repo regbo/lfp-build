@@ -11,7 +11,6 @@ import java.util.*
 import java.util.stream.Collectors
 import java.util.stream.Stream
 
-
 private const val AUTO_CONFIG_PROPERTY_NAME = "autoConfigOptions"
 
 /** Default fallback configuration mapping (used if not strict). */
@@ -19,7 +18,7 @@ private val FALLBACK_CONFIGURATIONS =
     mapOf(
         JavaPlugin.API_CONFIGURATION_NAME to JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
         JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME to
-                JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME,
+            JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME,
     )
 
 /**

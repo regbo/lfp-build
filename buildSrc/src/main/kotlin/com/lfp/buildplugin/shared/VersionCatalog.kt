@@ -78,7 +78,6 @@ data class VersionCatalog(val outputDirectory: File, val resource: Resource) : A
         nameParts.joinToString("")
     }
 
-
     /** Returns the extracted auto-config metadata keyed by library alias. */
     fun autoConfigOptions(): Map<String, LibraryAutoConfigOptions> = context.autoConfigOptions
 
