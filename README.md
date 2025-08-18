@@ -1,182 +1,142 @@
 # LFP Build Plugin
 
-A Gradle **settings** plugin that:
+A Gradle settings plugin for multi module repos
 
-- Discovers and includes subprojects by scanning the repo for `build.gradle(.kts)` files while respecting `.gitignore`
-- Configures dependency repositories at the **settings** level using `RepositoriesMode.PREFER_SETTINGS`
-- Loads one or more default version catalogs from the plugin classpath and **auto wires** libraries into appropriate
-  configurations using `autoConfigOptions`
-- Seeds new projects with a package directory under `src/main/java` or `src/main/kotlin`
-- Contributes a low precedence `logback.xml` during `processResources` that you can override
-- Exposes handy metadata on each project via `project.extra`
+* Discovers and includes subprojects by scanning the repo for `build.gradle` or `build.gradle.kts` while respecting `.gitignore`
+* Sets dependency repositories at the settings level using `RepositoriesMode.PREFER_SETTINGS` and adds Maven Central
+* Loads one or more version catalogs from the plugin classpath and can auto wire libraries to configurations using `autoConfigOptions`
+* Seeds new modules with a package directory under `src/main/java` or `src/main/kotlin`
+* Contributes a default `logback.xml` with low precedence during `processResources` so a module’s own file wins
+* Exposes helpful metadata on each project via `project.extra`
+* Minimums: Gradle 8.14 and Java 17
 
-Minimums: Gradle 8.14, Java 17
+## Install
 
-## Quick start
-
-### Using JitPack in `settings.gradle.kts`
+Using a published build from JitPack
 
 ```kotlin
+// settings.gradle.kts
 pluginManagement {
     repositories {
         maven { url = uri("https://jitpack.io") }
         gradlePluginPortal()
         mavenCentral()
     }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "com.github.regbo.lfp-build") {
-                useModule("com.github.regbo:lfp-build:${'$'}{requested.version}")
-            }
-        }
-    }
 }
 
 plugins {
-    // use a tag, release, or commit hash
-    id("com.github.regbo.lfp-build") version "<version>"
+    id("com.github.regbo.lfp-build") version "<git-hash or tag>"
 }
 ```
 
-### Using a local checkout
+Using a local checkout
 
 ```kotlin
+// settings.gradle.kts
 pluginManagement {
-    includeBuild("../lfp-build") // path to this repo
+    includeBuild("../lfp-build")
 }
 plugins {
     id("com.github.regbo.lfp-build")
 }
 ```
 
-## What the plugin does
+No extra configuration is required. Apply the plugin in `settings.gradle.kts` only.
 
-### Repository management
+## What it does at a glance
 
-At settings time the plugin configures
+### Project discovery
 
-```kotlin
-settings.dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-    repositories {
-        mavenCentral()
-    }
-}
-```
+* Walks the repository starting at the root
+* Skips paths that are hidden or match common build folders such as `build`, `temp`, `tmp`
+* Merges `.gitignore` rules from the root down using JGit and ignores matching files or directories
+* Includes any directory that contains a valid Gradle build file
 
-Add any extra repositories you need in `settings.gradle(.kts)` under `dependencyResolutionManagement`. Project level
-repositories are ignored when `PREFER_SETTINGS` is used.
+### Repositories
 
-### Subproject discovery
-
-The plugin walks the file tree from the repo root and includes any folder that contains `build.gradle` or
-`build.gradle.kts`. Discovery behavior:
-
-- Respects `.gitignore` files at every directory level, including nested ones
-- Skips hidden directories and common temp folders: `build`, `temp`, `tmp`
-- Determines the Gradle project path from the relative directory path
-- Derives a human readable project name from path segments and the `group`
-
-Internally this is implemented with JGit (`IgnoreNode` and `FastIgnoreRule`).
-
-### Source package seeding
-
-If a project has no `src/main/java` or `src/main/kotlin` for the computed package, the plugin creates it. The package
-segments come from `group` and the project name segments. This is a no-op if the paths already exist.
-
-### Default `logback.xml`
-
-During `processResources` the plugin contributes a small `logback.xml` via an additional `from` spec and sets:
-
-```kotlin
-duplicatesStrategy = DuplicatesStrategy.INCLUDE
-```
-
-This gives the contributed file **lowest precedence**. If you place your own `src/main/resources/logback.xml`, or
-another task adds one later, that file takes priority and overwrites the contributed one.
+* Configures `dependencyResolutionManagement` in settings
+* Uses `RepositoriesMode.PREFER_SETTINGS`
+* Adds Maven Central
 
 ### Version catalogs and auto wiring
 
-The plugin scans its classpath for resources named:
+* Loads `gradle/libs.versions.toml` resources from the plugin classpath
+* Supports property placeholders like `${spring-boot}` which are resolved from Gradle properties
+* Writes a cleaned copy of each catalog under `build/generated/version-catalog/<hash>/libs.versions.toml`
+* After each project is created, applies dependencies for every catalog alias using optional `autoConfigOptions`
 
-```
-com/lfp/buildplugin/default.libs.versions.toml
-```
+`autoConfigOptions` fields
 
-For each found file it:
+* `enabled` controls whether the alias is applied
+* `platform` adds the alias using `dependencies.platform(...)`
+* `configurations` optional list of configuration name patterns. Regular expressions are supported
+* `strictConfigurations` when true, only the listed configurations are used. When false, a small default mapping is used as a fallback
 
-1. Parses the TOML into a Gradle version catalog
-2. Reads `autoConfigOptions` from each library entry
-3. Removes `autoConfigOptions` from the catalog object so Gradle sees a normal catalog
-4. Applies the catalog to every project and wires libraries according to the options
+  * Default fallback mapping
 
-`autoConfigOptions` format is embedded per library alias in the catalog. Example:
+    * `api` goes to `implementation`
+    * `implementation` goes to `testImplementation`
+
+Example `libs.versions.toml`
 
 ```toml
+[versions]
+spring-boot = "3.5.4"
+
 [libraries]
-# platform example
-spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version = "3.5.4", autoConfigOptions = { platform = true, configurations = ["api"] } }
+spring-core = { module = "org.springframework:spring-core" }
 
-# implementation example
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson", autoConfigOptions = { configurations = ["implementation"] } }
+# Example of an alias that will be added as a platform first
+spring-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", autoConfigOptions = { platform = true, configurations = ["implementation|testImplementation"] } }
 
-# lombok example with multiple configurations
-lombok = { module = "org.projectlombok:lombok", version = "1.18.34", autoConfigOptions = { configurations = ["annotationProcessor", "compileOnly", "testAnnotationProcessor", "testCompileOnly"] } }
+# Example of an alias without a version. Version will be controlled by the platform above
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", autoConfigOptions = { configurations = ["implementation"] } }
 ```
 
-Supported `autoConfigOptions` fields:
+Notes
 
-- `enabled` boolean, default true
-- `platform` boolean, wraps the dependency with `dependencies.platform(...)`
-- `configurations` list of configuration names or regex patterns
-- `strictConfigurations` boolean, when true only `configurations` are used. When false the plugin applies simple
-  fallbacks
+* If `platform = true` the alias must have a version
+* If an alias has no version and `platform = false` it is added as a `group` and `name` map so a BOM can control the version
+* Application order is platforms first then non platforms
 
-Default configuration resolution when `configurations` is not set:
+### Seeding source layout
 
-- If `platform = true` the defaults are `api` and `testImplementation`
-- Otherwise the default is `api`
+For each included subproject without existing sources
 
-Fallbacks when `strictConfigurations = false`:
+* Creates `src/main/java` or `src/main/kotlin` directories using a derived package path
+* Derivation uses the project group if set and falls back to the root group. It also uses name segments from the project path
+* Example
 
-- `api` falls back to `implementation`
-- `implementation` falls back to `testImplementation`
+  * Root group `com.example`
+  * Module path `:modules:my-service`
+  * Created package path `com/example/my/service`
 
-Version handling:
+### Default logging config
 
-- If a library has no version in the catalog it will be added using only `group` and `name`. This is allowed only when
-  `platform = false`
-- Platform libraries must declare a version in the catalog. If missing the plugin fails fast
-
-Libraries are applied in two passes with platform entries first so that alignment is in place before implementations.
+* Adds a simple `logback.xml` to `processResources` with `DuplicatesStrategy.INCLUDE`
+* If the module already has `src/main/resources/logback.xml` nothing is added
+* If multiple tasks contribute `logback.xml` the last one configured wins
 
 ### Project metadata
 
-For convenience the plugin exposes these values on each project:
+Each project gets the following extras
 
-- `project.extra["projectPathSegments"]` list of path segments from the repo root
-- `project.extra["projectNameSegments"]` list of normalized name segments
-- `project.extra["packageDirSegments"]` list of directory segments used for the package under `src/main/...`
+* `project.extra["projectPathSegments"]` a list of tokens from the project path
+* `project.extra["projectNameSegments"]` a list of tokens from the project name
+* `project.extra["packageDirSegments"]` the derived package directory segments used for seeding sources
 
-### BuildConfig for the plugin itself
+## Building this plugin
 
-This repo uses the `com.github.gmazzo.buildconfig` plugin to generate constants that the plugin uses at runtime:
+* Java 17 and Gradle 8.14
+* `./gradlew build`
+* The plugin coordinates are built from `gradle.properties`
 
-- `plugin_package_name`
-- `plugin_name`
-
-You do not need to configure these in consumer projects.
+  * `repository_group`, `repository_owner`, `repository_name` form the plugin id `com.github.<owner>.<name>`
+  * `plugin_implementation_class` sets the implementation class and the default plugin name
 
 ## Tips
 
-- To skip a directory from discovery add it to a `.gitignore` near that directory
-- To override the default `logback.xml` just add your own file under `src/main/resources`
-- To disable a catalog entry set `autoConfigOptions.enabled = false` for that library
-- To model a BOM use `platform = true` and pick the configurations that should receive it
-
-## Development
-
-- Java 17
-- Gradle 8.14
-- Run `./gradlew build`
-- Tests use JUnit 5
+* To keep a directory out of discovery, add it to a `.gitignore` near that directory
+* To override the default `logback.xml` add your own file under `src/main/resources`
+* To disable a catalog entry set `autoConfigOptions.enabled = false`
+* Use a `platform` alias first when you want its BOM to control versions for other aliases

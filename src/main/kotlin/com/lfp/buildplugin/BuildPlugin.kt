@@ -1,14 +1,13 @@
 package com.lfp.buildplugin
 
-
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.initialization.Settings
-import org.gradle.api.initialization.resolve.RepositoriesMode
 import org.gradle.api.tasks.Copy
 import org.gradle.internal.extensions.core.extra
 import java.io.File
+import java.net.URI
 import java.nio.file.Path
 import java.util.regex.Pattern
 
@@ -30,6 +29,7 @@ class BuildPlugin : Plugin<Settings> {
      */
     override fun apply(settings: Settings) {
         configureRepositories(settings)
+        configureCaches(settings)
         configureVersionCatalogs(settings)
 
         // Configure root project metadata
@@ -77,8 +77,24 @@ class BuildPlugin : Plugin<Settings> {
     @Suppress("UnstableApiUsage")
     private fun configureRepositories(settings: Settings) {
         settings.dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-            repositories { mavenCentral() }
+            repositories {
+                mavenCentral()
+                google()
+                maven { url = URI("https://jitpack.io") }
+            }
+        }
+    }
+
+    /**
+     * Configures local build cache retention centrally.
+     */
+    private fun configureCaches(settings: Settings, days: Int = 7) {
+        settings.buildCache {
+            local {
+                isEnabled = true
+                directory = File(settings.rootDir, ".gradle/build-cache")
+                removeUnusedEntriesAfterDays = days
+            }
         }
     }
 
