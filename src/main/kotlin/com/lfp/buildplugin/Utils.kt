@@ -101,6 +101,17 @@ object Utils {
         return TrimmedList.from(segments)
     }
 
+    /**
+     * Looks up a property by name.
+     *
+     * Resolution order:
+     *  1. Uses Gradle [ProviderFactory.gradleProperty] if available.
+     *  2. Falls back to constants generated in [BuildPluginBuildConfig] if present.
+     *
+     * @param providerFactory optional Gradle [ProviderFactory] to check for the property
+     * @param name the property key
+     * @return the resolved property value, or `null` if not found
+     */
     fun property(providerFactory: ProviderFactory?, name: String): String? {
         val value = providerFactory?.gradleProperty(name)?.orNull
         if (!value.isNullOrBlank()) {

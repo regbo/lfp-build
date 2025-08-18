@@ -1,34 +1,26 @@
 import java.util.stream.Stream
 
-// === Repository configuration for resolving plugins and dependencies ===
+// === Repositories used to resolve plugins and dependencies ===
 repositories {
-    gradlePluginPortal() // Gradle Plugin Portal for community plugins
-    mavenCentral() // Maven Central for standard dependencies
+    gradlePluginPortal()
+    mavenCentral()
 }
 
-// === Plugins required for building and publishing this Gradle plugin ===
+// === Build and publish plugins used for this Gradle plugin project ===
 plugins {
-    `kotlin-dsl` // Enable Kotlin DSL for build scripts
-    `maven-publish` // Enable publishing artifacts to Maven repositories
+    `kotlin-dsl`
+    `maven-publish`
     alias(libs.plugins.buildconfig)
 }
 
-// === Java and Kotlin toolchain configuration ===
+// === Java and Kotlin toolchains ===
 val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
 
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(javaVersion.get())) } }
 
 kotlin { jvmToolchain(javaVersion.get()) }
 
-fun tokenize(input: String): List<String> {
-    return input
-        .replace(Regex("([a-z0-9])([A-Z])"), "$1 $2")
-        .split(Regex("[^a-zA-Z0-9]+"))
-        .filter { it.isNotBlank() }
-        .map { it.lowercase() }
-}
-
-// === Plugin metadata construction ===
+// === Plugin coordinates built from gradle.properties ===
 val pluginId =
     providers.provider {
         listOf("repository_group", "repository_owner", "repository_name")
@@ -41,18 +33,34 @@ val pluginImplementationClass = providers.gradleProperty("plugin_implementation_
 val pluginPackageName = pluginImplementationClass.map { it.substringBeforeLast(".") }
 val pluginName = pluginImplementationClass.map { it.substringAfterLast('.') }
 
+// The group is the package of the implementation class so published artifacts use that coordinate
 group = pluginPackageName.get()
 
+/**
+ * Utility to split a mixed case or delimited identifier into lowercase tokens.
+ *
+ * Examples: "MyPluginName" -> ["my", "plugin", "name"] "my-plugin_name" -> ["my", "plugin", "name"]
+ */
+fun tokenize(input: String): List<String> {
+    return input
+        .replace(Regex("([a-z0-9])([A-Z])"), "$1 $2")
+        .split(Regex("[^a-zA-Z0-9]+"))
+        .filter { it.isNotBlank() }
+        .map { it.lowercase() }
+}
+
+// === Publishing configuration ===
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
+            // Artifact id is a tokenized version of the implementation class name
             artifactId = tokenize(pluginName.get()).joinToString("-")
         }
     }
 }
 
-// === Plugin registration ===
+// === Gradle plugin registration ===
 gradlePlugin {
     plugins {
         register(pluginName.get()) {
@@ -62,37 +70,42 @@ gradlePlugin {
     }
 }
 
-// === Test dependencies ===
+// === Test dependencies only ===
 dependencies {
+    // Align dependency versions to Spring Boot BOM when a libs.versions.spring.boot entry is
+    // present
     implementation(
         libs.versions.spring.boot
-            .map { "org.springframework.boot:spring-boot-dependencies:${it}" }
+            .map { "org.springframework.boot:spring-boot-dependencies:$it" }
             .map { platform(it) }
     )
+
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// === Apply all dependencies from the version catalog automatically ===
+// === Apply all libraries from the version catalog as implementation dependencies ===
 val libsVersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 libsVersionCatalog.libraryAliases.forEach { alias ->
     dependencies { implementation(libsVersionCatalog.findLibrary(alias).orElseThrow()) }
 }
 
-// === BuildConfig generation ===
+// === Generate BuildConfig constants for convenient access in plugin code ===
 buildConfig {
     packageName(pluginPackageName.get())
     className(pluginName.get() + "BuildConfig")
 
-    // Include gradle.properties entries as constants (only valid Java identifiers)
+    // Add gradle.properties entries as constants when they are valid Java identifiers.
+    // If a key has dots they are replaced with underscores. Conflicts are avoided by skipping
+    // any transformed name that already exists as a key.
     properties.keys
-        .map { Pair(it, it.replace(".", "_").trim()) }
-        .filter { pair ->
-            pair.component1() == pair.component2() || !properties.containsKey(pair.component2())
+        .map { key -> key to key.replace(".", "_").trim() }
+        .filter { (orig, transformed) ->
+            orig == transformed || !properties.containsKey(transformed)
         }
-        .filter { pair -> pair.component2().matches(Regex("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$")) }
-        .filter { pair ->
+        .filter { (_, name) -> name.matches(Regex("^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$")) }
+        .filter { (_, name) ->
             val javaReservedWords =
                 Stream.of(
                     "abstract",
@@ -149,11 +162,9 @@ buildConfig {
                     "false",
                     "null",
                 )
-            javaReservedWords.noneMatch { it.equals(pair.component2(), ignoreCase = true) }
+            javaReservedWords.noneMatch { it.equals(name, ignoreCase = true) }
         }
-        .forEach { pair ->
-            val key = pair.component1()
-            val name = pair.component2()
+        .forEach { (key, name) ->
             when (val value = properties[key]) {
                 is Number -> buildConfigField(name, value)
                 is String -> buildConfigField(name, value)
@@ -162,17 +173,16 @@ buildConfig {
             }
         }
 
-    // Include the plugin name and package name as a constant
+    // Always expose plugin identity
     buildConfigField("plugin_package_name", pluginPackageName)
     buildConfigField("plugin_name", pluginName)
 
+    // Expose version catalog entries as constants when not already provided by gradle.properties
     libsVersionCatalog.versionAliases.forEach { alias ->
         var aliasParts = tokenize(alias)
-        if (!aliasParts.isEmpty()) {
+        if (aliasParts.isNotEmpty()) {
             val versionPart = "version"
-            if (!aliasParts.contains(versionPart)) {
-                aliasParts = aliasParts + versionPart
-            }
+            if (!aliasParts.contains(versionPart)) aliasParts = aliasParts + versionPart
             val name = aliasParts.joinToString("_")
             if (!properties.containsKey(name)) {
                 buildConfigField(
@@ -184,5 +194,5 @@ buildConfig {
     }
 }
 
-// === Test task configuration ===
+// === Test task ===
 tasks.test { useJUnitPlatform() }

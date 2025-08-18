@@ -148,7 +148,7 @@ data class VersionCatalog(
 
             node.isObject -> {
                 val obj = (node as ObjectNode)
-                val fields = obj.fields().asSequence().toList()
+                val fields = obj.properties().asSequence().toList()
                 for ((k, v) in fields) {
                     obj.set<JsonNode>(k, replacePlaceholderProperties(v))
                 }

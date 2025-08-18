@@ -138,7 +138,7 @@ class LibraryAutoConfigOptions : LibraryAutoConfig() {
 
             val result = mutableMapOf<String, LibraryAutoConfigOptions>()
 
-            libraries.fields().forEach { (name, value) ->
+            libraries.properties().forEach { (name, value) ->
                 if (value.isObject) {
                     val optionsNode =
                         if (remove) (value as ObjectNode).remove(AUTO_CONFIG_PROPERTY_NAME)
