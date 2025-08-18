@@ -15,6 +15,7 @@ import org.springframework.core.io.Resource
 import java.io.File
 import java.security.DigestInputStream
 import java.security.MessageDigest
+import java.util.function.BiConsumer
 import java.util.stream.IntStream
 
 private const val GENERATED_VERSION_CATALOG_OUTPUT_PATH = "build/generated/version-catalog"
@@ -39,7 +40,7 @@ data class VersionCatalog(
     val providerFactory: ProviderFactory,
     val outputDirectory: File,
     val resource: Resource,
-) : Action<Settings> {
+) : Action<Settings>, BiConsumer<Project, org.gradle.api.artifacts.VersionCatalog> {
     /**
      * Internal parsed representation of the catalog, computed lazily:
      * - MD5 hash of file contents
@@ -107,18 +108,28 @@ data class VersionCatalog(
         settings.gradle.afterProject(
             Utils.action { project ->
                 val libs = project.extensions.getByType<VersionCatalogsExtension>().named(name)
-                apply(project, libs)
+                accept(project, libs)
             }
         )
     }
 
     /**
-     * Applies auto-configuration to each library alias in the given catalog.
+     * Applies auto configuration for every library alias in the provided catalog.
      *
-     * @param project The Gradle [Project] to configure
-     * @param libs The [org.gradle.api.artifacts.VersionCatalog] instance
+     * Order of application:
+     * - Platform libraries (options.platform == true) are applied first to establish BOM alignment
+     * - Non platform libraries are applied next so their versions can be controlled by platforms
+     *
+     * Resolution:
+     * - For each alias, looks up any parsed [LibraryAutoConfigOptions]; if none exist, uses
+     *   defaults
+     * - Resolves the alias to a [MinimalExternalModuleDependency] via [libs.findLibrary]
+     * - Delegates to [LibraryAutoConfigOptions.add] to attach the dependency to the project
+     *
+     * @param project target Gradle [Project]
+     * @param libs version catalog instance backing this generated catalog
      */
-    fun apply(project: Project, libs: org.gradle.api.artifacts.VersionCatalog) {
+    override fun accept(project: Project, libs: org.gradle.api.artifacts.VersionCatalog) {
         libs.libraryAliases
             .map { alias -> Pair(alias, autoConfigOptions()[alias] ?: LibraryAutoConfigOptions()) }
             .sortedBy { pair -> if (pair.component2().platform) 0 else 1 }
@@ -130,6 +141,26 @@ data class VersionCatalog(
             }
     }
 
+    /**
+     * Recursively resolves placeholder properties in a Jackson tree produced from TOML.
+     *
+     * Supported placeholder syntax:
+     * - A string that is exactly of the form `${name}` where `name` is a Gradle property key
+     *
+     * Resolution strategy:
+     * - Uses [Utils.property] which checks the [ProviderFactory] first
+     * - Falls back to constants in BuildConfig if present
+     * - If no value is found, the original node is left unchanged
+     *
+     * Nodes processed:
+     * - Text nodes: replaced when they match the placeholder pattern
+     * - Object nodes: processed field by field in place
+     * - Array nodes: processed element by element in place
+     * - Other node types are returned as is
+     *
+     * @param node the input node, possibly null
+     * @return the node with placeholders resolved where applicable
+     */
     private fun replacePlaceholderProperties(node: JsonNode?): JsonNode? {
         if (node == null || node.isNull) return node
 
@@ -140,14 +171,14 @@ data class VersionCatalog(
                 if (match != null) {
                     val name = match.groupValues[1]
                     val value = Utils.property(providerFactory, name)
-                    if (value != null) TextNode.valueOf(value.toString()) else node
+                    if (value != null) TextNode.valueOf(value) else node
                 } else {
                     node
                 }
             }
 
             node.isObject -> {
-                val obj = (node as ObjectNode)
+                val obj = node as ObjectNode
                 val fields = obj.properties().asSequence().toList()
                 for ((k, v) in fields) {
                     obj.set<JsonNode>(k, replacePlaceholderProperties(v))
