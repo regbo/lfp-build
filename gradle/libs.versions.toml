@@ -13,5 +13,5 @@ jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-d
 apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 apache-commons-csv = { module = "org.apache.commons:commons-csv", version = "1.14.0" }
 eclipse-jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version = "7.3.0.202506031305-r" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+
 
