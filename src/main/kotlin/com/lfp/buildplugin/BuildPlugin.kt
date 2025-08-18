@@ -8,6 +8,7 @@ import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.testing.Test
 import org.gradle.internal.extensions.core.extra
 import java.io.File
+import java.net.URI
 import java.nio.file.Path
 import java.util.regex.Pattern
 
@@ -81,7 +82,10 @@ class BuildPlugin : Plugin<Settings> {
             listOf(
                 repositories.mavenCentral(),
                 repositories.google(),
-                repositories.maven { setUrl("https://jitpack.io") },
+                repositories.maven {
+                    name = "jitpack"
+                    url = URI.create("https://jitpack.io")
+                },
             )) {
             repositories.add(repository)
         }
