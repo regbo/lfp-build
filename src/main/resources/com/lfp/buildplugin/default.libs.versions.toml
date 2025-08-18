@@ -9,4 +9,4 @@ apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = 
 one-util-streamex = { module = "one.util:streamex", version = "0.8.4" }
 # testImplementation
 sprint-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", autoConfigOptions = { configurations = ["testImplementation"] } }
-junit-platform-launcher = { module = "oorg.junit.platform:junit-platform-launcher",  autoConfigOptions = { configurations = ["testRuntimeOnly"] } }
+junit-platform-launcher = { module = "oorg.junit.platform:junit-platform-launcher", autoConfigOptions = { configurations = ["testRuntimeOnly"] } }
