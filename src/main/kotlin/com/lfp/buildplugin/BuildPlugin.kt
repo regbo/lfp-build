@@ -5,6 +5,7 @@ import org.gradle.api.Project
 import org.gradle.api.file.DuplicatesStrategy
 import org.gradle.api.initialization.Settings
 import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.testing.Test
 import org.gradle.internal.extensions.core.extra
 import java.io.File
 import java.net.URI
@@ -98,6 +99,8 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
+
+
     /**
      * Includes the given directory as a Gradle subproject if valid, and registers configuration
      * logic for it.
@@ -152,6 +155,7 @@ class BuildPlugin : Plugin<Settings> {
         val packageDirSegments = packageDirSegments(project, projectNameSegments)
         project.extra["packageDirSegments"] = packageDirSegments
         configureProjectLogbackXml(project)
+        configureTests(project)
         if (project != project.rootProject) {
             configureProjectSrcDir(project, packageDirSegments)
         }
@@ -201,6 +205,22 @@ class BuildPlugin : Plugin<Settings> {
             }
         }
     }
+
+
+    /**
+     * Configures test tasks for the given Gradle [Project].
+     *
+     * This method applies the following configuration to all tasks of type [Test]:
+     * - Enables the JUnit Platform, allowing tests to be discovered and run with JUnit 5.
+     *
+     * @param project the Gradle [Project] whose test tasks will be configured
+     */
+    private fun configureTests(project: Project) {
+        project.tasks.withType(Test::class.java) {
+            useJUnitPlatform()
+        }
+    }
+
 
     /**
      * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists for a new
