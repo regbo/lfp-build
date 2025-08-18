@@ -8,7 +8,6 @@ import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.testing.Test
 import org.gradle.internal.extensions.core.extra
 import java.io.File
-import java.net.URI
 import java.nio.file.Path
 import java.util.regex.Pattern
 
@@ -77,18 +76,18 @@ class BuildPlugin : Plugin<Settings> {
      */
     @Suppress("UnstableApiUsage")
     private fun configureRepositories(settings: Settings) {
-        settings.dependencyResolutionManagement {
-            repositories {
-                mavenCentral()
-                google()
-                maven { url = URI("https://jitpack.io") }
-            }
+        val repositories = settings.dependencyResolutionManagement.repositories
+        for (repository in
+            listOf(
+                repositories.mavenCentral(),
+                repositories.google(),
+                repositories.maven { setUrl("https://jitpack.io") },
+            )) {
+            repositories.add(repository)
         }
     }
 
-    /**
-     * Configures local build cache retention centrally.
-     */
+    /** Configures local build cache retention centrally. */
     private fun configureCaches(settings: Settings, days: Int = 7) {
         settings.buildCache {
             local {
@@ -98,8 +97,6 @@ class BuildPlugin : Plugin<Settings> {
             }
         }
     }
-
-
 
     /**
      * Includes the given directory as a Gradle subproject if valid, and registers configuration
@@ -206,7 +203,6 @@ class BuildPlugin : Plugin<Settings> {
         }
     }
 
-
     /**
      * Configures test tasks for the given Gradle [Project].
      *
@@ -216,11 +212,8 @@ class BuildPlugin : Plugin<Settings> {
      * @param project the Gradle [Project] whose test tasks will be configured
      */
     private fun configureTests(project: Project) {
-        project.tasks.withType(Test::class.java) {
-            useJUnitPlatform()
-        }
+        project.tasks.withType(Test::class.java) { useJUnitPlatform() }
     }
-
 
     /**
      * Ensures the default `src/main/java` or `src/main/kotlin` package directory exists for a new
