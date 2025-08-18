@@ -1,4 +1,4 @@
-package com.lfp.buildplugin.shared
+package com.lfp.buildplugin
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -85,7 +85,7 @@ class LibraryAutoConfigOptions : LibraryAutoConfig() {
                     strictConfigurations -> emptyList()
                     platform ->
                         listOf(
-                            JavaPlugin.API_CONFIGURATION_NAME,
+                            JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME,
                             JavaPlugin.TEST_IMPLEMENTATION_CONFIGURATION_NAME,
                         )
                     else -> listOf(JavaPlugin.API_CONFIGURATION_NAME)

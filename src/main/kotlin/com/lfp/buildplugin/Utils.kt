@@ -1,6 +1,6 @@
 @file:Suppress("ObjectLiteralToLambda", "JavaDefaultMethodsNotOverriddenByDelegation")
 
-package com.lfp.buildplugin.shared
+package com.lfp.buildplugin
 
 import com.fasterxml.jackson.dataformat.toml.TomlMapper
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
@@ -16,6 +16,7 @@ import org.gradle.api.file.FileCollection
 import org.gradle.api.initialization.Settings
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
+import org.gradle.api.provider.ProviderFactory
 import org.springframework.core.io.FileSystemResource
 import org.springframework.core.io.PathResource
 import org.springframework.core.io.Resource
@@ -98,6 +99,20 @@ object Utils {
             segments = segments.map { it.lowercase() }
         }
         return TrimmedList.from(segments)
+    }
+
+    fun property(providerFactory: ProviderFactory?, name: String): String? {
+        val value = providerFactory?.gradleProperty(name)?.orNull
+        if (!value.isNullOrBlank()) {
+            return value
+        }
+        return try {
+            val field = BuildPluginBuildConfig::class.java.getDeclaredField(name)
+            field.isAccessible = true
+            field.get(null)?.toString()
+        } catch (_: NoSuchFieldException) {
+            null
+        }
     }
 
     /**

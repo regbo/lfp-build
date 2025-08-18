@@ -1,5 +1,3 @@
-import com.lfp.buildplugin.shared.LibraryAutoConfigOptions
-import com.lfp.buildplugin.shared.Utils
 import java.util.stream.Stream
 
 // === Repository configuration for resolving plugins and dependencies ===
@@ -12,7 +10,7 @@ repositories {
 plugins {
     `kotlin-dsl` // Enable Kotlin DSL for build scripts
     `maven-publish` // Enable publishing artifacts to Maven repositories
-    alias(libs.plugins.buildconfig) // BuildConfig generation via catalog plugin alias
+    alias(libs.plugins.buildconfig)
 }
 
 // === Java and Kotlin toolchain configuration ===
@@ -20,28 +18,14 @@ val javaVersion = providers.gradleProperty("java_version").map { it.toInt() }
 
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(javaVersion.get())) } }
 
-kotlin {
-    jvmToolchain(javaVersion.get())
-    sourceSets {
-        getByName("main") {
-            // Include additional Kotlin sources from buildSrc
-            kotlin.srcDir("buildSrc/src/main/kotlin")
-        }
-    }
-}
+kotlin { jvmToolchain(javaVersion.get()) }
 
-// === Test dependencies ===
-dependencies {
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-}
-
-// === Apply all dependencies from the version catalog automatically ===
-val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
-
-libs.libraryAliases.forEach { alias ->
-    val dependency = libs.findLibrary(alias).get().get()
-    LibraryAutoConfigOptions().add(project, dependency)
+fun tokenize(input: String): List<String> {
+    return input
+        .replace(Regex("([a-z0-9])([A-Z])"), "$1 $2")
+        .split(Regex("[^a-zA-Z0-9]+"))
+        .filter { it.isNotBlank() }
+        .map { it.lowercase() }
 }
 
 // === Plugin metadata construction ===
@@ -63,14 +47,7 @@ publishing {
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
-            artifactId =
-                Utils.split(
-                        pluginName.get(),
-                        nonAlphaNumeric = true,
-                        camelCase = true,
-                        lowercase = true,
-                    )
-                    .joinToString("_")
+            artifactId = tokenize(pluginName.get()).joinToString("-")
         }
     }
 }
@@ -83,6 +60,24 @@ gradlePlugin {
             implementationClass = pluginImplementationClass.get()
         }
     }
+}
+
+// === Test dependencies ===
+dependencies {
+    implementation(
+        libs.versions.spring.boot
+            .map { "org.springframework.boot:spring-boot-dependencies:${it}" }
+            .map { platform(it) }
+    )
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+// === Apply all dependencies from the version catalog automatically ===
+val libsVersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
+
+libsVersionCatalog.libraryAliases.forEach { alias ->
+    dependencies { implementation(libsVersionCatalog.findLibrary(alias).orElseThrow()) }
 }
 
 // === BuildConfig generation ===
@@ -170,6 +165,23 @@ buildConfig {
     // Include the plugin name and package name as a constant
     buildConfigField("plugin_package_name", pluginPackageName)
     buildConfigField("plugin_name", pluginName)
+
+    libsVersionCatalog.versionAliases.forEach { alias ->
+        var aliasParts = tokenize(alias)
+        if (!aliasParts.isEmpty()) {
+            val versionPart = "version"
+            if (!aliasParts.contains(versionPart)) {
+                aliasParts = aliasParts + versionPart
+            }
+            val name = aliasParts.joinToString("_")
+            if (!properties.containsKey(name)) {
+                buildConfigField(
+                    name,
+                    libsVersionCatalog.findVersion(alias).orElseThrow().toString(),
+                )
+            }
+        }
+    }
 }
 
 // === Test task configuration ===

@@ -1,11 +1,15 @@
-package com.lfp.buildplugin.shared
+package com.lfp.buildplugin
 
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.TextNode
 import org.apache.commons.codec.binary.Hex
 import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.initialization.Settings
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.kotlin.dsl.getByType
 import org.springframework.core.io.Resource
 import java.io.File
@@ -14,6 +18,8 @@ import java.security.MessageDigest
 import java.util.stream.IntStream
 
 private const val GENERATED_VERSION_CATALOG_OUTPUT_PATH = "build/generated/version-catalog"
+
+private val PLACEHOLDER_PROPERTY_REGEX = Regex("""^\$\{([^}]+)}$""")
 
 /**
  * Represents a Gradle version catalog backed by a TOML resource, with optional auto-configuration
@@ -29,7 +35,11 @@ private const val GENERATED_VERSION_CATALOG_OUTPUT_PATH = "build/generated/versi
  * @property outputDirectory The directory where the cleaned version catalog will be written
  * @property resource The Spring [Resource] representing the original catalog file
  */
-data class VersionCatalog(val outputDirectory: File, val resource: Resource) : Action<Settings> {
+data class VersionCatalog(
+    val providerFactory: ProviderFactory,
+    val outputDirectory: File,
+    val resource: Resource,
+) : Action<Settings> {
     /**
      * Internal parsed representation of the catalog, computed lazily:
      * - MD5 hash of file contents
@@ -40,9 +50,12 @@ data class VersionCatalog(val outputDirectory: File, val resource: Resource) : A
         resource.inputStream.use { input ->
             val md = MessageDigest.getInstance("MD5")
             val content =
-                DigestInputStream(input, md).use { digestInput ->
-                    Utils.tomlMapper.readTree(digestInput)
-                }
+                replacePlaceholderProperties(
+                    DigestInputStream(input, md).use { digestInput ->
+                        Utils.tomlMapper.readTree(digestInput)
+                    }
+                )
+            require(content is ObjectNode)
             val hash = Hex.encodeHexString(md.digest())
             val autoConfigOptions = LibraryAutoConfigOptions.read(content, remove = true)
             Context(hash, content, autoConfigOptions)
@@ -117,11 +130,52 @@ data class VersionCatalog(val outputDirectory: File, val resource: Resource) : A
             }
     }
 
+    private fun replacePlaceholderProperties(node: JsonNode?): JsonNode? {
+        if (node == null || node.isNull) return node
+
+        return when {
+            node.isTextual -> {
+                val text = node.textValue()
+                val match = PLACEHOLDER_PROPERTY_REGEX.matchEntire(text)
+                if (match != null) {
+                    val name = match.groupValues[1]
+                    val value = Utils.property(providerFactory, name)
+                    if (value != null) TextNode.valueOf(value.toString()) else node
+                } else {
+                    node
+                }
+            }
+
+            node.isObject -> {
+                val obj = (node as ObjectNode)
+                val fields = obj.fields().asSequence().toList()
+                for ((k, v) in fields) {
+                    obj.set<JsonNode>(k, replacePlaceholderProperties(v))
+                }
+                obj
+            }
+
+            node.isArray -> {
+                val arr = node as ArrayNode
+                for (i in 0 until arr.size()) {
+                    arr.set(i, replacePlaceholderProperties(arr.get(i)))
+                }
+                arr
+            }
+
+            else -> node
+        }
+    }
+
     companion object {
 
         /** Creates a [VersionCatalog] instance from a [Settings] context and [Resource]. */
         fun from(settings: Settings, resource: Resource): VersionCatalog {
-            return VersionCatalog(generatedOutputPath(settings.rootDir), resource)
+            return VersionCatalog(
+                settings.providers,
+                generatedOutputPath(settings.rootDir),
+                resource,
+            )
         }
 
         /** Resolves the generated output path relative to the given root directory. */

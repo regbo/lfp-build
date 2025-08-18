@@ -1,4 +1,4 @@
-package com.lfp.buildplugin.shared
+package com.lfp.buildplugin
 
 /**
  * Base configuration for automatically wiring dependencies to Gradle configurations.

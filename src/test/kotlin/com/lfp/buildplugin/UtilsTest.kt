@@ -1,6 +1,5 @@
 package com.lfp.buildplugin
 
-import com.lfp.buildplugin.shared.Utils
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.io.File
@@ -82,5 +81,11 @@ class UtilsTest {
     fun `split with null and empty string`() {
         assertEquals(emptyList<String>(), Utils.split(null))
         assertEquals(emptyList<String>(), Utils.split("  "))
+    }
+
+    @Test
+    fun `spring boot version`() {
+        val version = Utils.property(null, "spring_boot_version")
+        assert(!version.isNullOrEmpty())
     }
 }

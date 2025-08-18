@@ -1,11 +1,8 @@
-[versions]
-spring-boot = "3.5.4"
-
 [libraries]
 # annotations
 lombok = { module = "org.projectlombok:lombok", version = "1.18.38", autoConfigOptions = { configurations = ["annotationProcessor", "compileOnly", "testAnnotationProcessor", "testCompileOnly"] } }
 # platform implementation
-spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot", autoConfigOptions = { platform = true } }
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "${spring_boot_version}", autoConfigOptions = { platform = true } }
 # implementation
 spring-boot-starter-logging = { module = "org.springframework.boot:spring-boot-starter-logging" }
 apache-commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
